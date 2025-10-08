@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model accesos {
+  id            Int       @id @default(autoincrement())
+  idrol         Int
+  fechacreacion DateTime?
+  estado        Int?      @db.SmallInt
+  descripcion   String?   @db.VarChar(200)
+  rol           rol       @relation(fields: [idrol], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accesos_rol")
+}
+
+model departamento {
+  id              Int         @id @default(autoincrement())
+  idpais          Int
+  nombre          String      @db.VarChar(80)
+  estado          Int         @default(1) @db.SmallInt
+  fechacreacion   DateTime    @default(now()) @db.Timestamp(6)
+  fechaactualizar DateTime?   @db.Timestamp(6)
+  pais            pais        @relation(fields: [idpais], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_departamento_pais")
+  provincia       provincia[]
+}
+
+model detalleorden {
+  id      Int     @id @default(autoincrement())
+  idorden Int
+  idcurso String  @db.Char(24)
+  precio  Decimal @db.Decimal(12, 2)
+  orden   orden   @relation(fields: [idorden], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_detalleorden_orden")
+}
+
+model documentospago {
+  id            Int       @id @default(autoincrement())
+  idpago        Int       @unique(map: "uq_documentospago_idpago")
+  tipo          String    @db.VarChar(50)
+  fechasubida   DateTime  @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  pdfurl        String?   @db.VarChar(500)
+  xmlurl        String?   @db.VarChar(500)
+  cdrurl        String?   @db.VarChar(500)
+  estado        Int       @default(1) @db.SmallInt
+  fechacreacion DateTime  @default(now()) @db.Timestamp(6)
+  fechaupdate   DateTime? @db.Timestamp(6)
+  pagos         pagos     @relation(fields: [idpago], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_documentospago_pagos")
+}
+
+model orden {
+  id            Int            @id @default(autoincrement())
+  idusuario     Int
+  montototal    Decimal        @db.Decimal(12, 2)
+  moneda        String         @db.VarChar(10)
+  fechacreacion DateTime       @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  estado        String         @db.VarChar(20)
+  detalleorden  detalleorden[]
+  usuarios      usuarios       @relation(fields: [idusuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_orden_usuarios")
+  pagos         pagos?
+}
+
+model pagos {
+  id             Int             @id @default(autoincrement())
+  idorden        Int             @unique(map: "uq_pagos_idorden")
+  metodopago     String          @db.VarChar(50)
+  fechapago      DateTime        @db.Timestamp(6)
+  monto          Decimal         @db.Decimal(12, 2)
+  estado         String          @db.VarChar(20)
+  nrcompra       Int?
+  tipotarjeta    String?         @db.VarChar(20)
+  nrtarjeta      String?         @db.VarChar(20)
+  nombrepagante  String?         @db.VarChar(100)
+  emailpagante   String?         @db.VarChar(150)
+  documentospago documentospago?
+  orden          orden           @relation(fields: [idorden], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_pagos_orden")
+}
+
+model pais {
+  id              Int            @id @default(autoincrement())
+  nombre          String         @db.VarChar(80)
+  estado          Int            @default(1) @db.SmallInt
+  fechacreacion   DateTime       @default(now()) @db.Timestamp(6)
+  fechaactualizar DateTime?      @db.Timestamp(6)
+  departamento    departamento[]
+  persona         persona[]
+}
+
+model perfil {
+  id        Int       @id @default(autoincrement())
+  nombre    String?   @db.VarChar(50)
+  password  String?   @db.VarChar(50)
+  estado    Int?      @db.SmallInt
+  imageurl  String?   @db.VarChar(100)
+  idusuario Int?
+  idrol     Int?
+  rol       rol?      @relation(fields: [idrol], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuarios  usuarios? @relation(fields: [idusuario], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model persona {
+  id           Int       @id @default(autoincrement())
+  nombre       String?   @db.VarChar(50)
+  apellidopat  String?   @db.VarChar(50)
+  apellidomat  String?   @db.VarChar(50)
+  documento    Int?
+  telefono     Int?
+  idusuario    Int?
+  codigopostal String?   @db.VarChar(10)
+  idpais       Int?
+  pais         pais?     @relation(fields: [idpais], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_persona_pais")
+  usuarios     usuarios? @relation(fields: [idusuario], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model provincia {
+  id              Int          @id @default(autoincrement())
+  iddepartamento  Int
+  nombre          String       @db.VarChar(80)
+  estado          Int          @default(1) @db.SmallInt
+  fechacreacion   DateTime     @default(now()) @db.Timestamp(6)
+  fechaactualizar DateTime?    @db.Timestamp(6)
+  departamento    departamento @relation(fields: [iddepartamento], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_provincia_departamento")
+}
+
+model rol {
+  id          Int        @id
+  nombrerol   String?    @db.VarChar(50)
+  estado      Int?       @db.SmallInt
+  descripcion String?    @db.VarChar(200)
+  tipo        String?    @db.VarChar(50)
+  accesos     accesos[]
+  perfil      perfil[]
+  usuarios    usuarios[]
+}
+
+model usuarios {
+  id                Int       @id @default(autoincrement())
+  username          String?   @db.VarChar(50)
+  email             String?   @db.VarChar(50)
+  password          String?   @db.VarChar(50)
+  confirmarpassword String?   @db.VarChar(50)
+  fechadecreacion   DateTime?
+  estado            Int?      @db.SmallInt
+  idrol             Int?
+  orden             orden[]
+  perfil            perfil[]
+  persona           persona[]
+  rol               rol?      @relation(fields: [idrol], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
