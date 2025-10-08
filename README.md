@@ -1,4 +1,4 @@
-# Zellr
+# TRANSACTION DICTA
 
 ## 1. Prisma
 Para inicializar prisma por instalacion ejecutar `npx prisma init`
