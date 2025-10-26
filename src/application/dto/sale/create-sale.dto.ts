@@ -4,6 +4,7 @@ import {
   IsArray,
   IsBoolean,
   IsIn,
+  IsInt,
   IsISO8601,
   IsNumber,
   IsOptional,
@@ -30,8 +31,9 @@ export class DetalleOrdenDto {
 
 export class CrearVentaDto {
   @ApiProperty({ example: '42', description: 'ID del usuario (string desde el Front)' })
-  @IsString()
-  idUsuario!: string;
+  @Type(() => Number)
+  @IsInt()
+  idUsuario!: number;
 
   @ApiProperty({ example: 'PEN' })
   @IsString()

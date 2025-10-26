@@ -9,17 +9,17 @@ export class DetailsSaleEntity {
     public fechaCreacion: Date,
   ) {}
 
-  static fromPrisma(data: DetalleOrdenModel, fallbackFecha: Date): DetailsSaleEntity {
+  static fromPrisma(data: DetalleOrdenModel): DetailsSaleEntity {
     return new DetailsSaleEntity(
       data.id,
       data.idcurso,
-      data.nombrecurso ?? '',          
+      data.nombrecurso,          
       Number(data.precio),
-      data.fechacreacion ?? fallbackFecha,
+      data.fechacreacion,
     );
   }
 
-  static fromPrismaList(data: DetalleOrdenModel[], fallbackFecha: Date): DetailsSaleEntity[] {
-    return data.map((r) => DetailsSaleEntity.fromPrisma(r, fallbackFecha));
+  static fromPrismaList(data: DetalleOrdenModel[]): DetailsSaleEntity[] {
+    return data.map((item) => DetailsSaleEntity.fromPrisma(item));
   }
 }

@@ -5,7 +5,7 @@ export type EstadoOrdenEnum = 'PENDIENTE' | 'CANCELADO' | 'APROBADO';
 
 export class SaleEntity {
   constructor(
-    public id: number | null,
+    public id: number,
     public idUsuario: number,
     public montoTotal: number,
     public moneda: string,
@@ -20,7 +20,7 @@ export class SaleEntity {
     orden: OrdenModel;
     detalleorden: DetalleOrdenModel[];
   }): SaleEntity {
-    const fecha = data.orden.fechacreacion;
+    const fecha = data.orden.fechacreacion ;
     return new SaleEntity(
       data.orden.id,
       data.orden.idusuario,
@@ -30,7 +30,7 @@ export class SaleEntity {
       data.orden.estado,
       data.orden.estadoorden as EstadoOrdenEnum, 
       data.orden.codigoqr ?? '',
-      DetailsSaleEntity.fromPrismaList(data.detalleorden, fecha),
+      DetailsSaleEntity.fromPrismaList(data.detalleorden),
     );
   }
 }

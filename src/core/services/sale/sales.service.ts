@@ -17,23 +17,22 @@ export class SalesService {
 
   async crear(dto: CrearVentaDto): Promise<SaleEntity> {
   await this.validator.validate(dto, CrearVentaDto);
-  const idUsuarioNum = Number(dto.idUsuario);
   const estadoTecnico = dto.estado ? 'CREATED' : 'FAILED';
   const estadoOrden = dto.estadoOrden.toUpperCase() as EstadoOrdenEnum;
   const detalles = dto.detalleOrden.map(
-    d =>
+    detalle =>
       new DetailsSaleEntity(
         null,
-        d.idCurso,
-        d.nombreCurso,
-        d.precio,
+        detalle.idCurso,
+        detalle.nombreCurso,
+        detalle.precio,
         new Date(dto.fechaCreacion),
       ),
   );
 
   const venta = new SaleEntity(
     null,
-    idUsuarioNum,
+    dto.idUsuario,
     dto.montoTotal,
     dto.moneda,
     new Date(dto.fechaCreacion),

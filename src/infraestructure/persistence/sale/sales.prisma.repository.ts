@@ -3,7 +3,7 @@ import { estadoorden } from '@prisma/client';
 import { PrismaService } from '../../../core/services/prisma/prisma.service';
 import { SalesRepository } from '../../../core/repositories/sale/sales.repository';
 import { SaleEntity } from '../../../core/entities/sale/sale.entity';
-import { DetailsSaleEntity } from '../../../core/entities/sale/DetailsSale.entity';
+
 
 type EstadoOrdenDomain = 'PENDIENTE' | 'CANCELADO' | 'APROBADO';
 
@@ -25,28 +25,21 @@ export class SalesPrismaRepository implements SalesRepository {
         estadoorden: prismaEstado,
         codigoqr: venta.codigoQR,
         detalleorden: {
-          create: venta.detalleOrden.map((d) => ({
-            idcurso: d.idCurso,
-            precio: d.precio,
-            nombrecurso: d.nombreCurso,
-            fechacreacion: d.fechaCreacion,
+          create: venta.detalleOrden.map((detalle) => ({
+            idcurso: detalle.idCurso,
+            precio: detalle.precio,
+            nombrecurso: detalle.nombreCurso,
+            fechacreacion: detalle.fechaCreacion,
           })),
         },
       },
       include: { detalleorden: true },
     });
 
-    return new SaleEntity(
-      created.id,
-      created.idusuario,
-      Number(created.montototal),
-      created.moneda,
-      created.fechacreacion,
-      created.estado,
-      created.estadoorden as EstadoOrdenDomain | null,
-      created.codigoqr,
-      DetailsSaleEntity.fromPrismaList(created.detalleorden, created.fechacreacion),
-    );
+      return SaleEntity.fromPrismaFull({
+      orden: created,
+      detalleorden: created.detalleorden,
+    });
   }
 
   async findAll(): Promise<SaleEntity[]> {
@@ -55,18 +48,11 @@ export class SalesPrismaRepository implements SalesRepository {
       include: { detalleorden: true },
     });
 
-    return rows.map((o) =>
-      new SaleEntity(
-        o.id,
-        o.idusuario,
-        Number(o.montototal),
-        o.moneda,
-        o.fechacreacion,
-        o.estado,
-        o.estadoorden as EstadoOrdenDomain | null,
-        o.codigoqr,
-        DetailsSaleEntity.fromPrismaList(o.detalleorden, o.fechacreacion),
-      ),
+     return rows.map(row =>
+      SaleEntity.fromPrismaFull({
+        orden: row,
+        detalleorden: row.detalleorden,
+      }),
     );
   }
 }

@@ -27,6 +27,7 @@ export class SalesController {
     }
 
     return {
+      status: HttpStatus.CREATED,
       data: result.getValue(),
       message: 'Venta creada',
     };
@@ -43,6 +44,7 @@ export class SalesController {
     }
 
     return {
+      status: HttpStatus.OK,
       data: result,
       message: 'Ventas obtenidas',
     };
