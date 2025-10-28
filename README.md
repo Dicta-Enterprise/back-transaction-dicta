@@ -33,3 +33,12 @@ Ejecutar `npx prisma generate` para poder iniciar con las ultimas atualizaciones
 ## 4. Cargar a GitHub
 
 Ejecutar `npm run lint` para verificar la calidad de codigo
+
+
+## 5. ENUM EN PRISMA
+
+Si no coincide todo el modelo script con prisma , Estos son Enums , Dichos Enums se encuentran dentro de la documentacion de la Dicta_BD_v1.sql 
+
+ `CREATE TYPE estadoorden AS ENUM ('PENDIENTE', 'CANCELADO', 'APROBADO');`
+
+ Esto no altera en la base de datos, ya estan directamente en prisma por codigo.

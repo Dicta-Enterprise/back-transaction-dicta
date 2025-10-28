@@ -3,7 +3,8 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
-  IsIn,
+  IsEnum,
+  IsInt,
   IsISO8601,
   IsNumber,
   IsOptional,
@@ -11,27 +12,15 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
-
-export class DetalleOrdenDto {
-  @ApiProperty({ example: 'abcr345' })
-  @IsString()
-  idCurso!: string;
-
-  @ApiProperty({ example: 'Marketing Digital' })
-  @IsString()
-  nombreCurso!: string;
-
-  @ApiProperty({ example: 150 })
-  @IsNumber()
-  @IsPositive()
-  precio!: number;
-}
+import { Transform,Type  } from 'class-transformer';
+import { DetalleOrdenDto } from './Details-sale.dto';
+import { EstadoOrden, type EstadoOrdenType } from 'src/shared/enums/estado-orden.enum';
 
 export class CrearVentaDto {
   @ApiProperty({ example: '42', description: 'ID del usuario (string desde el Front)' })
-  @IsString()
-  idUsuario!: string;
+  @Type(() => Number)
+  @IsInt()
+  idUsuario!: number;
 
   @ApiProperty({ example: 'PEN' })
   @IsString()
@@ -46,9 +35,12 @@ export class CrearVentaDto {
   @IsISO8601()
   fechaCreacion!: string;
 
-  @ApiProperty({ example: 'PENDIENTE', enum: ['PENDIENTE', 'CANCELADO', 'APROBADO'] })
-  @IsIn(['PENDIENTE', 'CANCELADO', 'APROBADO'])
-  estadoOrden!: 'PENDIENTE' | 'CANCELADO' | 'APROBADO';
+  @ApiProperty({ example: 'PENDIENTE', enum: EstadoOrden })
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value
+  )
+  @IsEnum(EstadoOrden)
+  estadoOrden!: EstadoOrdenType;
 
   @ApiProperty({ example: true, description: 'Se mapea a estado técnico CREATED/FAILED' })
   @IsBoolean()

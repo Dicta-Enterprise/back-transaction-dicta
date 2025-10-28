@@ -4,10 +4,8 @@ import { SALES_REPOSITORY } from 'src/core/constants/constants';
 import { SalesRepository } from 'src/core/repositories/sale/sales.repository';
 import { ValidatorService } from 'src/shared/application/validation/validator.service';
 import { SaleEntity } from 'src/core/entities/sale/sale.entity';
-import { DetailsSaleEntity } from 'src/core/entities/sale/DetailsSale.entity';
-
-type EstadoOrdenEnum = 'PENDIENTE' | 'CANCELADO' | 'APROBADO';
-
+import { DetailsSaleEntity } from 'src/core/entities/sale/details-sale.entity';
+import { type EstadoOrdenType } from 'src/shared/enums/estado-orden.enum';
 @Injectable()
 export class SalesService {
   constructor(
@@ -17,28 +15,26 @@ export class SalesService {
 
   async crear(dto: CrearVentaDto): Promise<SaleEntity> {
   await this.validator.validate(dto, CrearVentaDto);
-  const idUsuarioNum = Number(dto.idUsuario);
-  const estadoTecnico = dto.estado ? 'CREATED' : 'FAILED';
-  const estadoOrden = dto.estadoOrden.toUpperCase() as EstadoOrdenEnum;
+
   const detalles = dto.detalleOrden.map(
-    d =>
+    detalle =>
       new DetailsSaleEntity(
         null,
-        d.idCurso,
-        d.nombreCurso,
-        d.precio,
+        detalle.idCurso,
+        detalle.nombreCurso,
+        detalle.precio,
         new Date(dto.fechaCreacion),
       ),
   );
 
   const venta = new SaleEntity(
     null,
-    idUsuarioNum,
+    dto.idUsuario,
     dto.montoTotal,
     dto.moneda,
     new Date(dto.fechaCreacion),
-    estadoTecnico,
-    estadoOrden,           
+    dto.estado ? 'CREATED' : 'FAILED',
+    dto.estadoOrden as EstadoOrdenType,       
     dto.codigoQR ?? '',
     detalles,
   );

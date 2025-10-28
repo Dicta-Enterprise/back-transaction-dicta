@@ -1,17 +1,17 @@
 import { detalleorden as DetalleOrdenModel, orden as OrdenModel } from '@prisma/client';
-import { DetailsSaleEntity } from './DetailsSale.entity';
+import { DetailsSaleEntity } from './details-sale.entity';
+import type { EstadoOrdenType } from 'src/shared/enums/estado-orden.enum';
 
-export type EstadoOrdenEnum = 'PENDIENTE' | 'CANCELADO' | 'APROBADO';
 
 export class SaleEntity {
   constructor(
-    public id: number | null,
+    public id: number,
     public idUsuario: number,
     public montoTotal: number,
     public moneda: string,
     public fechaCreacion: Date,
     public estado: string,                   
-    public estadoOrden: EstadoOrdenEnum,   
+    public estadoOrden: EstadoOrdenType,   
     public codigoQR: string,
     public detalleOrden: DetailsSaleEntity[],
   ) {}
@@ -20,7 +20,7 @@ export class SaleEntity {
     orden: OrdenModel;
     detalleorden: DetalleOrdenModel[];
   }): SaleEntity {
-    const fecha = data.orden.fechacreacion;
+    const fecha = data.orden.fechacreacion ;
     return new SaleEntity(
       data.orden.id,
       data.orden.idusuario,
@@ -28,9 +28,9 @@ export class SaleEntity {
       data.orden.moneda,
       fecha,
       data.orden.estado,
-      data.orden.estadoorden as EstadoOrdenEnum, 
+      data.orden.estadoorden,
       data.orden.codigoqr ?? '',
-      DetailsSaleEntity.fromPrismaList(data.detalleorden, fecha),
+      DetailsSaleEntity.fromPrismaList(data.detalleorden),
     );
   }
 }
