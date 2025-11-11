@@ -7,9 +7,9 @@ import { ValidatorService } from 'src/shared/application/validation/validator.se
 import { SalesPrismaRepository } from 'src/infraestructure/persistence/sale/sales.prisma.repository';
 import { CreateSaleUseCase } from 'src/application/uses-cases/sale/create-sale.usecase';
 import { ListSalesUseCase } from 'src/application/uses-cases/sale/list-sales.usecase';
-
+import { HttpModule } from '@nestjs/axios';
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, HttpModule],
   controllers: [SalesController],
   providers: [
     SalesService,

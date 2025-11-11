@@ -8,7 +8,6 @@ import {
   IsISO8601,
   IsNumber,
   IsOptional,
-  IsPositive,
   IsString,
   ValidateNested,
 } from 'class-validator';
@@ -28,7 +27,6 @@ export class CrearVentaDto {
 
   @ApiProperty({ example: 450.0 })
   @IsNumber()
-  @IsPositive()
   montoTotal!: number;
 
   @ApiProperty({ example: '2025-10-13T00:00:00.000Z' })
