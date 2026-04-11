@@ -1,4 +1,4 @@
-import { detalleorden as DetalleOrdenModel } from '@prisma/client';
+import { detalleorden as DetalleOrdenModel } from '../../../../generated/prisma';
 
 export class DetailsSaleEntity {
   constructor(

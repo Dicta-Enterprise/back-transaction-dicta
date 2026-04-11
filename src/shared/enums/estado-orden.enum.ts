@@ -1,4 +1,4 @@
-import { estadoorden as EstadoOrden } from '@prisma/client';
-export type { estadoorden as EstadoOrdenType } from '@prisma/client';
+import { estadoorden as EstadoOrden } from '../../../generated/prisma';
+export type { estadoorden as EstadoOrdenType } from '../../../generated/prisma';
 
 export { EstadoOrden };

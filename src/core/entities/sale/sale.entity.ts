@@ -1,4 +1,4 @@
-import { detalleorden as DetalleOrdenModel, orden as OrdenModel } from '@prisma/client';
+import { detalleorden as DetalleOrdenModel, orden as OrdenModel } from '../../../../generated/prisma';
 import { DetailsSaleEntity } from './details-sale.entity';
 import type { EstadoOrdenType } from 'src/shared/enums/estado-orden.enum';
 
