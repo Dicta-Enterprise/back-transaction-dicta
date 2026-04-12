@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-   output   = "../generated/prisma"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -59,8 +59,9 @@ model orden {
   moneda        String         @db.VarChar(10)
   fechacreacion DateTime       @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
   estado        String         @db.VarChar(20)
-  estadoorden   estadoorden?
-  codigoqr      String?        @db.VarChar(500)
+  estadoorden   estadoorden    @default(PENDIENTE)   
+  codigoqr      String?        @db.VarChar(500) 
+  mpid          String?        @unique
   detalleorden  detalleorden[]
   usuarios      usuarios       @relation(fields: [idusuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_orden_usuarios")
   pagos         pagos?
@@ -70,7 +71,7 @@ model pagos {
   id              Int             @id @default(autoincrement())
   idorden         Int             @unique(map: "uq_pagos_idorden")
   metodopago      String          @db.VarChar(50)
-  fechapago       DateTime        @db.Timestamp(6)
+  fechapago       DateTime        @default(now()) @db.Timestamp(6)
   monto           Decimal         @db.Decimal(12, 2)
   estado          String          @db.VarChar(20)
   nrcompra        Int?
@@ -84,6 +85,7 @@ model pagos {
   estadovisa      String?         @db.VarChar(30)
   descipcionerror String?         @db.VarChar(500)
   billeteraqr     String?         @db.VarChar(50)
+  mpPagoid        String?         @unique
   documentospago  documentospago?
   orden           orden           @relation(fields: [idorden], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_pagos_orden")
 }

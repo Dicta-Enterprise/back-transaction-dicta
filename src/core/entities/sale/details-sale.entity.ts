@@ -1,4 +1,4 @@
-import { detalleorden as DetalleOrdenModel } from '@prisma/client';
+import { detalleorden as DetalleOrdenModel } from '../../../../generated/prisma';
 
 export class DetailsSaleEntity {
   constructor(
@@ -11,7 +11,7 @@ export class DetailsSaleEntity {
 
   static fromPrisma(data: DetalleOrdenModel): DetailsSaleEntity {
     return new DetailsSaleEntity(
-      data.id,
+      data.id,                   
       data.idcurso,
       data.nombrecurso,          
       Number(data.precio),

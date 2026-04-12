@@ -15,7 +15,7 @@ export class SalesPrismaRepository implements SalesRepository {
         idusuario: venta.idUsuario,
         montototal: venta.montoTotal,
         moneda: venta.moneda,
-        fechacreacion: venta.fechaCreacion,
+        fechacreacion: new Date(),
         estado: venta.estado,
         estadoorden: venta.estadoOrden as EstadoOrdenType,
         codigoqr: venta.codigoQR,
@@ -24,7 +24,7 @@ export class SalesPrismaRepository implements SalesRepository {
             idcurso: detalle.idCurso,
             precio: detalle.precio,
             nombrecurso: detalle.nombreCurso,
-            fechacreacion: detalle.fechaCreacion,
+            fechacreacion: new Date(),
           })),
         },
       },
@@ -42,7 +42,6 @@ export class SalesPrismaRepository implements SalesRepository {
       orderBy: { fechacreacion: 'desc' },
       include: { detalleorden: true },
     });
-
      return rows.map(row =>
       SaleEntity.fromPrismaFull({
         orden: row,
@@ -50,4 +49,10 @@ export class SalesPrismaRepository implements SalesRepository {
       }),
     );
   }
+  async updateMpid(ordenId: number, mpid: string): Promise<void> {
+  await this.prisma.orden.update({
+    where: { id: ordenId },
+    data: { mpid },
+  });
+}
 }

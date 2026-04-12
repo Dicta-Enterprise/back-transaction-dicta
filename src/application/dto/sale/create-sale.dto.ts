@@ -32,8 +32,9 @@ export class CrearVentaDto {
   montoTotal!: number;
 
   @ApiProperty({ example: '2025-10-13T00:00:00.000Z' })
+  @IsOptional()
   @IsISO8601()
-  fechaCreacion!: string;
+  fechaCreacion?: string;
 
   @ApiProperty({ example: 'PENDIENTE', enum: EstadoOrden })
   @Transform(({ value }) =>

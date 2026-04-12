@@ -7,6 +7,7 @@ import { ValidatorService } from 'src/shared/application/validation/validator.se
 import { SalesPrismaRepository } from 'src/infraestructure/persistence/sale/sales.prisma.repository';
 import { CreateSaleUseCase } from 'src/application/uses-cases/sale/create-sale.usecase';
 import { ListSalesUseCase } from 'src/application/uses-cases/sale/list-sales.usecase';
+import { MercadopagoService } from 'src/modules/payments/mercadopago.service';
 
 @Module({
   imports: [PrismaModule],
@@ -17,6 +18,7 @@ import { ListSalesUseCase } from 'src/application/uses-cases/sale/list-sales.use
     ListSalesUseCase,
     ValidatorService,
     { provide: SALES_REPOSITORY, useClass: SalesPrismaRepository },
+    MercadopagoService,
   ],
 })
 export class SalesModule {}
