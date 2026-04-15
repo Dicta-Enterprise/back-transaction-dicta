@@ -8,6 +8,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model carrito {
+  id        Int              @id @default(autoincrement())
+  idusuario Int
+  cursos    carritoCurso[]
+}
+
+model carritoCurso {
+  id        Int     @id @default(autoincrement())
+  carritoId Int
+  idcurso   String  @db.Char(24)
+
+  carrito   carrito @relation(fields: [carritoId], references: [id],onDelete: Cascade)
+}
 model accesos {
   id            Int       @id @default(autoincrement())
   idrol         Int
