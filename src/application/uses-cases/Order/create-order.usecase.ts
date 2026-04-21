@@ -1,0 +1,85 @@
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { CrearVentaDto } from 'src/application/dto/Order/create-orden.dto';
+import { OrdenService } from 'src/core/services/Order/orden.service';
+import { MercadoPagoService } from 'src/core/services/Order/mercadopago.service';
+import { PagosService } from 'src/core/services/Order/pagos.service';
+import { Prisma } from 'generated/prisma';
+
+export interface PagoResultado {
+  ordenId:       number;
+  nrcompra:      number | null;
+  ordenMpId:     string;
+  pagoMpId:      string;
+  estadoOrden:   string;
+  estadoDetalle: string;
+  montoPagado:   string;
+  fechaCreacion: string;
+}
+
+@Injectable()
+export class CrearOrdenYPagarUseCase {
+  private readonly logger = new Logger(CrearOrdenYPagarUseCase.name);
+
+  constructor(
+    private readonly ordenService:       OrdenService,
+    private readonly mercadoPagoService: MercadoPagoService,
+    private readonly pagosService:       PagosService,
+  ) {}
+
+  async ejecutar(dto: CrearVentaDto): Promise<PagoResultado> {
+    this.logger.log(`Iniciando compra para usuario: ${dto.idusuario}`);
+
+    const montoEsperado = dto.detalleOrden.reduce(
+      (acc, d) => acc.add(new Prisma.Decimal(d.precio)),
+      new Prisma.Decimal(0),
+    );
+
+    const montoRecibido = new Prisma.Decimal(dto.pago.monto);
+    const diferencia = montoRecibido.minus(montoEsperado).abs();
+
+    if (diferencia.greaterThan(new Prisma.Decimal('0.01'))) {
+      throw new BadRequestException(
+        `Monto inválido: se recibió ${montoRecibido} pero la suma de detalles es ${montoEsperado}`,
+      );
+    }
+
+    const respuestaMp = await this.mercadoPagoService.crearOrdenPago({
+      idorden:         0,                          
+      monto:           dto.pago.monto,
+      emailpagante:    dto.pago.emailpagante,
+      metodopago:      dto.pago.metodopago,
+      tipotarjeta:     dto.pago.tipotarjeta,
+      token:           dto.pago.token,
+      cuotas:          dto.pago.cuotas,
+      moneda:          dto.pago.moneda,
+      processing_mode: dto.pago.processing_mode ?? 'automatic',
+    });
+
+    const orden = await this.ordenService.crearOrden(dto);
+
+    const pagoRegistrado = await this.pagosService.crearPago(
+      orden.id,
+      dto.pago,
+      respuestaMp,
+    );
+
+    await this.ordenService.actualizarEstado(orden.id, respuestaMp.status);
+
+    const primerPago = respuestaMp.transactions.payments[0];
+
+    this.logger.log(
+      `Compra completada | Orden BD=${orden.id} | MP=${respuestaMp.id} | Estado=${respuestaMp.status}`,
+    );
+
+    return {
+      ordenId:       orden.id,
+      nrcompra:      pagoRegistrado.nrcompra ?? null,
+      ordenMpId:     respuestaMp.id,
+      pagoMpId:      primerPago?.id ?? '',
+      estadoOrden:   respuestaMp.status,
+      estadoDetalle: respuestaMp.status_detail,
+      montoPagado:   primerPago?.paid_amount ?? primerPago?.amount ?? '0',
+      fechaCreacion: respuestaMp.created_date,
+    };
+  }
+}
