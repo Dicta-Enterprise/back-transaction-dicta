@@ -3,14 +3,14 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './core/services/prisma/prisma.module';
-import { SalesModule } from './infraestructure/http/sale/sales.module';
+import { PagosModule } from './infraestructure/http/Order/pagos.module';
 import { CarritoModule } from './infraestructure/http/Carrito-recovery/carrito.module';
 
 @Module({
   imports: [
     EventEmitterModule.forRoot(),
     PrismaModule  ,
-    SalesModule,
+    PagosModule,
     CarritoModule,
   ],
   controllers: [AppController],
