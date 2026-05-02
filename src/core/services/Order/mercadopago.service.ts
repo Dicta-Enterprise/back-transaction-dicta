@@ -43,7 +43,9 @@ export interface MpOrderResponse {
     }[];
   };
 }
-
+function montoANumber(n: number): number {
+  return Number(n.toFixed(2));
+}
 
 @Injectable()
 export class MercadoPagoService {
@@ -58,7 +60,9 @@ export class MercadoPagoService {
   async crearOrdenPago(payload: CrearOrdenMpPayload): Promise<MpOrderResponse> {
     const idempotencyKey = uuidv4();
     const body = this.construirPayload(payload);
+    const bodyJson = JSON.stringify(body);
 
+    this.logger.debug(`Payload JSON enviado a MP: ${bodyJson}`);
     this.logger.log(
       `POST /v1/orders | Orden interna: ${payload.idorden} | Idempotency: ${idempotencyKey}`,
     );
@@ -71,7 +75,7 @@ export class MercadoPagoService {
           Authorization: `Bearer ${this.accessToken}`,
           'X-Idempotency-Key': idempotencyKey,
         },
-        body: JSON.stringify(body),
+        body: bodyJson,
       });
 
       if (!response.ok) {
@@ -120,10 +124,12 @@ export class MercadoPagoService {
   }
 
   private construirPayload(p: CrearOrdenMpPayload): object {
+    const monto = montoANumber(p.monto);
+
     return {
       type:               'online',
       processing_mode:    p.processing_mode ?? 'automatic',
-      total_amount:       p.monto.toFixed(2),
+      total_amount:       monto,
       external_reference: `orden-interna-${p.idorden}`,
       payer: {
         email: p.emailpagante,
@@ -131,7 +137,7 @@ export class MercadoPagoService {
       transactions: {
         payments: [
           {
-            amount: p.monto.toFixed(2),
+            amount: monto,
             payment_method: {
               id:           p.metodopago,
               type:         p.tipotarjeta,
