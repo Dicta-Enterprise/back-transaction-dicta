@@ -3,6 +3,7 @@ import { CrearVentaDto } from 'src/application/dto/Order/create-orden.dto';
 import { OrdenService } from 'src/core/services/Order/orden.service';
 import { MercadoPagoService } from 'src/core/services/Order/mercadopago.service';
 import { PagosService } from 'src/core/services/Order/pagos.service';
+import { PrismaService } from 'src/core/services/prisma/prisma.service'; 
 import { Prisma } from 'generated/prisma';
 
 export interface PagoResultado {
@@ -24,6 +25,7 @@ export class CrearOrdenYPagarUseCase {
     private readonly ordenService:       OrdenService,
     private readonly mercadoPagoService: MercadoPagoService,
     private readonly pagosService:       PagosService,
+    private readonly prisma:             PrismaService,
   ) {}
 
   async ejecutar(dto: CrearVentaDto): Promise<PagoResultado> {
@@ -64,6 +66,17 @@ export class CrearOrdenYPagarUseCase {
     );
 
     await this.ordenService.actualizarEstado(orden.id, respuestaMp.status);
+
+    if (respuestaMp.status === 'approved') {
+      await this.prisma.carrito.updateMany({
+        where: {
+          idusuario: dto.idusuario,
+          estado: 'PENDIENTE',
+        },
+        data: { estado: 'COMPRADO' },
+      });
+      this.logger.log(`Carrito del usuario ${dto.idusuario} marcado como COMPRADO`);
+    }
 
     const primerPago = respuestaMp.transactions.payments[0];
 

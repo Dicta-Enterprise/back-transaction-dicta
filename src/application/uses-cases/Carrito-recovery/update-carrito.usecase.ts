@@ -21,6 +21,9 @@ export class ActualizarCarritoUseCase {
       carritoDb.id,
       carritoDb.idusuario,
       carritoDb.cursos.map(c => c.idcurso),
+      carritoDb.estado,
+      carritoDb.createdat,
+      carritoDb.updatedat,
     );
     dto.cursosAgregar?.forEach(c => carrito.agregarCurso(c.idcurso));
     dto.cursosEliminar?.forEach(id => carrito.eliminarCurso(id));
@@ -35,6 +38,11 @@ export class ActualizarCarritoUseCase {
         idcurso,
       })),
       skipDuplicates: true,
+    });
+
+    await this.prisma.carrito.update({
+      where: { id: carrito.id! },
+      data: { updatedat: new Date() },
     });
 
     return carrito;

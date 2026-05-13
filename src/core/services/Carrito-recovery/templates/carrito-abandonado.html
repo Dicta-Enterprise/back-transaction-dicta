@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body { font-family: 'Inter', 'Segoe UI', sans-serif; background: #1a1a1a; margin: 0; padding: 0; }
+    .container { max-width: 580px; margin: 40px auto; background: #272727; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,.4); }
+
+    .header { background: #1e1e1e; padding: 40px 32px; text-align: center; border-bottom: 2px solid #33ff66; }
+    .header-emoji { font-size: 52px; margin-bottom: 10px; }
+    .header h1 { color: #33ff66; margin: 0 0 6px; font-size: 30px; font-weight: 700; letter-spacing: 2px; }
+    .header p { color: #888; margin: 0; font-size: 14px; }
+
+    .body { padding: 36px 32px; }
+    .greeting { font-size: 20px; font-weight: 700; color: #fff; margin: 0 0 16px; }
+    .body p { color: #aaa; line-height: 1.8; margin: 0 0 18px; font-size: 15px; }
+    .highlight { color: #33ff66; font-weight: 700; }
+
+    .card { background: #1e1e1e; border-radius: 14px; padding: 20px 24px; margin: 24px 0; text-align: center; border: 2px dashed #33ff66; }
+    .card-emoji { font-size: 36px; margin-bottom: 8px; }
+    .card p { margin: 0; font-size: 15px; color: #fff; font-weight: 600; }
+    .card span { font-size: 13px; color: #888; font-weight: 400; }
+
+    .benefits { margin: 20px 0; padding: 0; list-style: none; }
+    .benefits li { padding: 10px 0; font-size: 14px; color: #aaa; border-bottom: 1px solid #333; }
+    .benefits li:last-child { border-bottom: none; }
+
+    .urgency { background: #1e1e1e; border-left: 4px solid #33ff66; border-radius: 10px; padding: 14px 18px; margin: 20px 0; font-size: 14px; color: #aaa; }
+    .urgency strong { color: #33ff66; }
+
+    .cta-wrapper { text-align: center; margin: 32px 0 16px; }
+    .cta { background: #33ff66; color: #000000; text-decoration: none; padding: 16px 44px; border-radius: 50px; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 20px rgba(51,255,102,0.25); }
+
+    .divider { border: none; border-top: 1px solid #333; margin: 24px 0; }
+    .note { font-size: 12px; color: #555; text-align: center; }
+    .footer { background: #1e1e1e; text-align: center; padding: 20px; font-size: 11px; color: #555; border-top: 1px solid #333; }
+    .footer strong { color: #33ff66; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <div class="header-emoji">💻</div>
+      <h1>DICTA</h1>
+      <p>Alfabetización digital para todos</p>
+    </div>
+
+    <div class="body">
+      <p class="greeting">¡Hola, {{nombreUsuario}}! 👋</p>
+
+      <p>
+        Dejaste <span class="highlight">{{totalCursos}} curso(s)</span> en tu carrito
+        y no queríamos que te los perdieras. ¡El mundo digital te está esperando!
+      </p>
+
+      <div class="card">
+        <div class="card-emoji">🛒</div>
+        <p>{{totalCursos}} curso(s) esperando por ti</p>
+        <span>Tu camino hacia el mundo digital comienza aquí</span>
+      </div>
+
+      <p>
+        En <span class="highlight">Dicta</span> creemos que aprender tecnología
+        no tiene edad ni límites. Ya seas niño, joven o adulto, nuestros cursos
+        están diseñados para que avances a tu propio ritmo con total confianza.
+      </p>
+
+      <ul class="benefits">
+        <li>✅ Cursos adaptados para todas las edades</li>
+        <li>✅ Aprende desde cero, sin conocimientos previos</li>
+        <li>✅ Contenido práctico y fácil de entender</li>
+        <li>✅ Acceso inmediato al comprar</li>
+      </ul>
+
+      <div class="urgency">
+        💡 <strong>¿Sabías que?</strong> Las personas con habilidades digitales
+        tienen más oportunidades laborales y mayor confianza en su día a día.
+        ¡Da el primer paso hoy!
+      </div>
+
+      <div class="cta-wrapper">
+        <a class="cta" href="{{urlCarrito}}" style="background: #33ff66; color: #1a1a1a; text-decoration: none; padding: 16px 44px; border-radius: 50px; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 20px rgba(51,255,102,0.25);">
+          ¡Completar mi compra ahora! →
+        </a>
+      </div>
+
+      <hr class="divider" />
+
+      <p class="note">
+        Si ya realizaste tu compra, puedes ignorar este mensaje.<br/>
+        Este recordatorio fue enviado a {{email}}.
+      </p>
+    </div>
+
+    <div class="footer">
+      © {{year}} <strong>Dicta</strong> · Alfabetización digital para todos<br/>
+      Estamos aquí para ayudarte a crecer en el mundo digital 💙
+    </div>
+
+  </div>
+</body>
+</html>
