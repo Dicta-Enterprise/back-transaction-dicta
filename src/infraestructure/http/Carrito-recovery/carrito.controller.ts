@@ -38,4 +38,10 @@ export class CarritoController {
   obtener(@Param('id', ParseIntPipe) id: number) {
     return this.carritoService.obtener(id);
   }
+
+  @Get('usuario/:usuarioId')
+  @ApiOperation({ summary: 'Obtiene un carrito por ID del usuario' })
+  obtenerPorUsuario(@Param('usuarioId', ParseIntPipe) usuarioId: number) {
+    return this.carritoService.obtenerPorUsuario(usuarioId);
+  }
 }
