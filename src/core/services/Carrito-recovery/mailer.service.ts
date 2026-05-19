@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -14,18 +14,10 @@ export interface CarritoMailData {
 @Injectable()
 export class CarritoMailerService {
   private readonly logger = new Logger(CarritoMailerService.name);
-  private transporter: nodemailer.Transporter;
+  private readonly resend: Resend;
 
   constructor(private readonly config: ConfigService) {
-    this.transporter = nodemailer.createTransport({
-      host: this.config.get('MAIL_HOST'),
-      port: this.config.get<number>('MAIL_PORT', 587),
-      secure: false,
-      auth: {
-        user: this.config.get('MAIL_USER'),
-        pass: this.config.get('MAIL_PASS'),
-      },
-    });
+    this.resend = new Resend(this.config.get('RESEND_API_KEY'));
   }
 
   async enviarRecordatorioCarrito(data: CarritoMailData): Promise<void> {
@@ -40,14 +32,19 @@ export class CarritoMailerService {
       .replace(/{{nombreUsuario}}/g, data.nombreUsuario)
       .replace(/{{totalCursos}}/g, String(data.totalCursos))
       .replace(/{{urlCarrito}}/g, data.urlCarrito)
-      .replace(/{{year}}/g, String(new Date().getFullYear()));
+      .replace(/{{year}}/g, String(new Date().getFullYear()))
+      .replace(/{{email}}/g, data.email);
 
-    await this.transporter.sendMail({
-      from: `"${this.config.get('MAIL_FROM_NAME', 'Dicta')}" <${this.config.get('MAIL_FROM')}>`,
+    const { error } = await this.resend.emails.send({
+      from: 'Dicta <onboarding@resend.dev>', // ← dominio sandbox de Resend para desarrollo
       to: data.email,
       subject: `${data.nombreUsuario}, tienes cursos esperándote 🎓`,
       html,
     });
+
+    if (error) {
+      throw new Error(`Error al enviar correo: ${error.message}`);
+    }
 
     this.logger.log(`Correo enviado a: ${data.email}`);
   }
