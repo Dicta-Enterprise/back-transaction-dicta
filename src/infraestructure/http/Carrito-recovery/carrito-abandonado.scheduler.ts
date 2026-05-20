@@ -8,7 +8,7 @@ export class CarritoAbandonadoScheduler {
 
   constructor(private readonly carritoAbandonadoUseCase: CarritoAbandonadoUseCase) {}
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_HOUR)
   async ejecutar(): Promise<void> {
     this.logger.log('[Cron] Iniciando revisión de carritos abandonados...');
     await this.carritoAbandonadoUseCase.ejecutar();

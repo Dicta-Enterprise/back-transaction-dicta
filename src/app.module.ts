@@ -6,12 +6,14 @@ import { PrismaModule } from './core/services/prisma/prisma.module';
 import { PagosModule } from './infraestructure/http/Order/pagos.module';
 import { CarritoModule } from './infraestructure/http/Carrito-recovery/carrito.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { MailerModule } from './core/services/mailer/mailer.module';
 
 @Module({
   imports: [
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     PrismaModule  ,
+    MailerModule,
     PagosModule,
     CarritoModule,
   ],

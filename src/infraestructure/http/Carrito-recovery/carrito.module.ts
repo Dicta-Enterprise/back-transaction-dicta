@@ -11,10 +11,12 @@ import { CarritoAbandonadoUseCase } from 'src/application/uses-cases/Carrito-rec
 import { CarritoService } from 'src/core/services/Carrito-recovery/carrito.service';
 import { CarritoMailerService } from 'src/core/services/Carrito-recovery/mailer.service';
 import { PrismaService } from 'src/core/services/prisma/prisma.service';
+import { MailerModule } from 'src/core/services/mailer/mailer.module';
 
 @Module({
   imports: [
     ConfigModule,
+    MailerModule
   ],
   controllers: [CarritoController],
   providers: [
