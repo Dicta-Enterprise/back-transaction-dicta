@@ -1,18 +1,14 @@
 import {
   ConflictException,
   Injectable,
-  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { pagos, Prisma } from 'generated/prisma';
 import { PagoDto } from 'src/application/dto/Order/Pago.dto';
 import { MpOrderResponse } from './mercadopago.service';
 
-
 @Injectable()
 export class PagosService {
-  private readonly logger = new Logger(PagosService.name);
-
   constructor(private readonly prisma: PrismaService) {}
 
   async crearPago(
@@ -20,9 +16,7 @@ export class PagosService {
     dto: PagoDto,
     respuestaMp: MpOrderResponse,
   ): Promise<pagos> {
-    const existente = await this.prisma.pagos.findUnique({
-      where: { idorden },
-    });
+    const existente = await this.prisma.pagos.findUnique({ where: { idorden } });
 
     if (existente) {
       throw new ConflictException(
@@ -30,27 +24,21 @@ export class PagosService {
       );
     }
 
-    const pago = await this.prisma.pagos.create({
+    return this.prisma.pagos.create({
       data: {
         idorden,
-        fechapago:       new Date(dto.fechapago),
-        monto:           new Prisma.Decimal(dto.monto),
-        estado:          this.mapearEstado(respuestaMp.status),
-        nombrepagante:   dto.nombrepagante,
-        emailpagante:    dto.emailpagante,
-        moneda:          dto.moneda,
-        metodopago:      dto.metodopago,
-        tipotarjeta:     dto.tipotarjeta,
+        fechapago: new Date(dto.fechapago),
+        monto: new Prisma.Decimal(dto.monto),
+        estado: this.mapearEstado(respuestaMp.status),
+        nombrepagante: dto.nombrepagante,
+        emailpagante: dto.emailpagante,
+        moneda: dto.moneda,
+        metodopago: dto.metodopago,
+        tipotarjeta: dto.tipotarjeta,
         processing_mode: dto.processing_mode ?? 'automatic',
-        transactionid:   respuestaMp.id,
+        transactionid: respuestaMp.id,
       },
     });
-
-    this.logger.log(
-      `Pago registrado: ID=${pago.id} | NrCompra=${pago.nrcompra} | Orden=${idorden} | MP=${respuestaMp.id}`,
-    );
-
-    return pago;
   }
 
   async obtenerPagoPorOrden(idorden: number): Promise<pagos | null> {
@@ -65,19 +53,19 @@ export class PagosService {
     return this.prisma.pagos.update({
       where: { idorden },
       data: {
-        estado:        this.mapearEstado(estadoMp),
-        transactionid: transactionid,
+        estado: this.mapearEstado(estadoMp),
+        transactionid,
       },
     });
   }
 
   private mapearEstado(estadoMp: string): string {
     const mapa: Record<string, string> = {
-      processed:       'COMPLETADO',
+      processed: 'COMPLETADO',
       action_required: 'PENDIENTE',
-      pending:         'PENDIENTE',
-      cancelled:       'CANCELADO',
-      failed:          'FALLIDO',
+      pending: 'PENDIENTE',
+      cancelled: 'CANCELADO',
+      failed: 'FALLIDO',
     };
     return mapa[estadoMp] ?? 'PENDIENTE';
   }
