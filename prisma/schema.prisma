@@ -35,6 +35,14 @@ model notificacioncarrito {
   carrito   carrito  @relation(fields: [idcarrito], references: [id], onDelete: Cascade)
 }
 
+model eventoCorreo {
+  id        Int      @id @default(autoincrement())
+  messageid String?  @db.VarChar(200)
+  evento    String   @db.VarChar(50)
+  email     String?  @db.VarChar(150)
+  createdat DateTime @default(now()) @db.Timestamp(6)
+}
+
 model accesos {
   id            Int       @id @default(autoincrement())
   idrol         Int
@@ -162,24 +170,4 @@ model usuarios {
   perfil            perfil[]
   persona           persona[]
   rol               rol?      @relation(fields: [idrol], references: [id], onDelete: NoAction, onUpdate: NoAction)
-}
-
-model documentospago {
-  id            Int       @id @default(autoincrement())
-  idpago        Int       @unique(map: "uq_documentospago_idpago")
-  tipo          String    @db.VarChar(50)
-  fechasubida   DateTime  @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
-  pdfurl        String?   @db.VarChar(500)
-  xmlurl        String?   @db.VarChar(500)
-  cdrurl        String?   @db.VarChar(500)
-  estado        Int       @default(1) @db.SmallInt
-  fechacreacion DateTime  @default(now()) @db.Timestamp(6)
-  fechaupdate   DateTime? @db.Timestamp(6)
-  pagos         pagos     @relation(fields: [idpago], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_documentospago_pagos")
-}
-
-enum estadoorden {
-  PENDIENTE
-  CANCELADO
-  APROBADO
 }

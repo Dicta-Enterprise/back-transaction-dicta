@@ -12,13 +12,17 @@ import { CarritoService } from 'src/core/services/Carrito-recovery/carrito.servi
 import { CarritoMailerService } from 'src/core/services/Carrito-recovery/mailer.service';
 import { PrismaService } from 'src/core/services/prisma/prisma.service';
 import { MailerModule } from 'src/core/services/mailer/mailer.module';
+import { WebhookController } from './webhook.controller';
+import { WebhookBrevoUseCase } from 'src/application/uses-cases/Carrito-recovery/webhook-brevo.usecase';
 
 @Module({
   imports: [
     ConfigModule,
     MailerModule
   ],
-  controllers: [CarritoController],
+  controllers: [CarritoController,
+    WebhookController
+  ],
   providers: [
     PrismaService,
     CarritoService,
@@ -30,6 +34,7 @@ import { MailerModule } from 'src/core/services/mailer/mailer.module';
     ObtenerCarritoPorUsuarioUseCase,
     CarritoAbandonadoUseCase,
     CarritoAbandonadoScheduler,
+    WebhookBrevoUseCase
   ],
 })
 export class CarritoModule {}
