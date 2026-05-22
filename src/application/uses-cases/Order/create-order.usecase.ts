@@ -1,59 +1,56 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+} from '@nestjs/common';
+
 import { CrearVentaDto } from 'src/application/dto/Order/create-orden.dto';
 import { OrdenService } from 'src/core/services/Order/orden.service';
 import { MercadoPagoService } from 'src/core/services/Order/mercadopago.service';
 import { PagosService } from 'src/core/services/Order/pagos.service';
-import { PrismaService } from 'src/core/services/prisma/prisma.service'; 
 import { Prisma } from 'generated/prisma';
 
 export interface PagoResultado {
-  ordenId:       number;
-  nrcompra:      number | null;
-  ordenMpId:     string;
-  pagoMpId:      string;
-  estadoOrden:   string;
+  ordenId: number;
+  nrcompra: number | null;
+  ordenMpId: string;
+  pagoMpId: string;
+  estadoOrden: string;
   estadoDetalle: string;
-  montoPagado:   string;
+  montoPagado: string;
   fechaCreacion: string;
 }
 
 @Injectable()
 export class CrearOrdenYPagarUseCase {
-  private readonly logger = new Logger(CrearOrdenYPagarUseCase.name);
-
   constructor(
-    private readonly ordenService:       OrdenService,
+    private readonly ordenService: OrdenService,
     private readonly mercadoPagoService: MercadoPagoService,
-    private readonly pagosService:       PagosService,
-    private readonly prisma:             PrismaService,
+    private readonly pagosService: PagosService,
   ) {}
 
   async ejecutar(dto: CrearVentaDto): Promise<PagoResultado> {
-    this.logger.log(`Iniciando compra para usuario: ${dto.idusuario}`);
-
     const montoEsperado = dto.detalleOrden.reduce(
       (acc, d) => acc.add(new Prisma.Decimal(d.precio)),
       new Prisma.Decimal(0),
     );
 
     const montoRecibido = new Prisma.Decimal(dto.pago.monto);
-    const diferencia = montoRecibido.minus(montoEsperado).abs();
 
-    if (diferencia.greaterThan(new Prisma.Decimal('0.01'))) {
+    if (montoRecibido.minus(montoEsperado).abs().greaterThan(new Prisma.Decimal('0.01'))) {
       throw new BadRequestException(
         `Monto inválido: se recibió ${montoRecibido} pero la suma de detalles es ${montoEsperado}`,
       );
     }
 
     const respuestaMp = await this.mercadoPagoService.crearOrdenPago({
-      idorden:         0,                          
-      monto:           dto.pago.monto,
-      emailpagante:    dto.pago.emailpagante,
-      metodopago:      dto.pago.metodopago,
-      tipotarjeta:     dto.pago.tipotarjeta,
-      token:           dto.pago.token,
-      cuotas:          dto.pago.cuotas,
-      moneda:          dto.pago.moneda,
+      idorden: 0,
+      monto: dto.pago.monto,
+      emailpagante: dto.pago.emailpagante,
+      metodopago: dto.pago.metodopago,
+      tipotarjeta: dto.pago.tipotarjeta,
+      token: dto.pago.token,
+      cuotas: dto.pago.cuotas,
+      moneda: dto.pago.moneda,
       processing_mode: dto.pago.processing_mode ?? 'automatic',
     });
 
@@ -67,32 +64,18 @@ export class CrearOrdenYPagarUseCase {
 
     await this.ordenService.actualizarEstado(orden.id, respuestaMp.status);
 
-    if (respuestaMp.status === 'approved') {
-      await this.prisma.carrito.updateMany({
-        where: {
-          idusuario: dto.idusuario,
-          estado: 'PENDIENTE',
-        },
-        data: { estado: 'COMPRADO' },
-      });
-      this.logger.log(`Carrito del usuario ${dto.idusuario} marcado como COMPRADO`);
-    }
-
-    const primerPago = respuestaMp.transactions.payments[0];
-
-    this.logger.log(
-      `Compra completada | Orden BD=${orden.id} | MP=${respuestaMp.id} | Estado=${respuestaMp.status}`,
-    );
+const primerPago = respuestaMp?.transactions?.payments?.[0];
+const estadoDetalle = primerPago?.status_detail ?? respuestaMp.status_detail ?? '';
 
     return {
-      ordenId:       orden.id,
-      nrcompra:      pagoRegistrado.nrcompra ?? null,
-      ordenMpId:     respuestaMp.id,
-      pagoMpId:      primerPago?.id ?? '',
-      estadoOrden:   respuestaMp.status,
-      estadoDetalle: respuestaMp.status_detail,
-      montoPagado:   primerPago?.paid_amount ?? primerPago?.amount ?? '0',
-      fechaCreacion: respuestaMp.created_date,
+      ordenId: orden.id,
+      nrcompra: pagoRegistrado?.nrcompra ?? null,
+      ordenMpId: respuestaMp.id,
+      pagoMpId: primerPago?.id ?? '',
+      estadoOrden: respuestaMp.status,
+      estadoDetalle,
+      montoPagado: primerPago?.paid_amount ?? primerPago?.amount ?? '0',
+      fechaCreacion: respuestaMp.created_date ?? '',
     };
   }
 }

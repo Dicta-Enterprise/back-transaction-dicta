@@ -1,8 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail, IsInt, IsISO8601, IsNotEmpty,
-  IsNumber, IsOptional, IsPositive, IsString, MaxLength, Min
+  IsOptional, IsPositive, IsString, MaxLength, Min
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { Type } from 'class-transformer';
  
 export class PagoDto {
@@ -10,57 +11,60 @@ export class PagoDto {
   @Type(() => Number)
   @IsInt()
   @IsPositive()
-  idorden!: number;                  
+  idorden!: number;
  
   @ApiProperty({ example: '2025-10-13T00:00:00.000Z' })
   @IsISO8601()
-  fechapago!: string;                
+  fechapago!: string;
  
-  @ApiProperty({ example: 150.00 })
-  @IsNumber({ maxDecimalPlaces: 2 })
+  @ApiProperty({ example: 1500 })
+  @Transform(({ value }) => Math.trunc(Number(value)))
+  @IsInt()
   @IsPositive()
-  monto!: number;                    
+  monto!: number;
  
   @ApiProperty({ example: 'Juan Pérez' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
-  nombrepagante!: string;          
+  nombrepagante!: string;
  
   @ApiProperty({ example: 'juan@dominio.com' })
   @IsEmail()
   @MaxLength(150)
-  emailpagante!: string;            
+  emailpagante!: string;
  
-  @ApiProperty({ example: 'PEN' })
+  @ApiProperty({ example: 'COP' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(10)
-  moneda!: string;                
+  moneda!: string;
  
   @ApiProperty({ example: 'master', description: 'Bandera de tarjeta (visa, master…)' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(10)
-  metodopago!: string;                 
+  metodopago!: string;
  
   @ApiProperty({ example: 'credit_card', enum: ['credit_card', 'debit_card'] })
   @IsString()
   @IsNotEmpty()
   @MaxLength(20)
-  tipotarjeta!: string;               
+  tipotarjeta!: string;
+ 
   @ApiProperty({ example: 'tok_abc123', description: 'Token de MercadoPago.js (un solo uso)' })
   @IsString()
   @IsNotEmpty()
-  token!: string;                      
+  token!: string;
  
   @ApiProperty({ example: 1, minimum: 1 })
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  cuotas!: number;                   
+  cuotas!: number;
  
   @ApiPropertyOptional({ example: 'automatic', enum: ['automatic', 'manual'], default: 'automatic' })
   @IsOptional()
-  processing_mode?: string;           
+  processing_mode?: string;
 }
+ 
