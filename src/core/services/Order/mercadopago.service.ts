@@ -123,7 +123,7 @@ export class MercadoPagoService {
     return {
       type:               'online',
       processing_mode:    p.processing_mode ?? 'automatic',
-      total_amount:       p.monto.toFixed(2),
+      total_amount:       p.monto.toFixed(0),
       external_reference: `orden-interna-${p.idorden}`,
       payer: {
         email: p.emailpagante,
@@ -131,7 +131,7 @@ export class MercadoPagoService {
       transactions: {
         payments: [
           {
-            amount: p.monto.toFixed(2),
+            amount: p.monto.toFixed(0),
             payment_method: {
               id:           p.metodopago,
               type:         p.tipotarjeta,

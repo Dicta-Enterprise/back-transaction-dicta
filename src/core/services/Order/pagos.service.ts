@@ -1,3 +1,4 @@
+
 import {
   ConflictException,
   Injectable,
@@ -7,14 +8,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { pagos, Prisma } from 'generated/prisma';
 import { PagoDto } from 'src/application/dto/Order/Pago.dto';
 import { MpOrderResponse } from './mercadopago.service';
-
-
+ 
+ 
 @Injectable()
 export class PagosService {
   private readonly logger = new Logger(PagosService.name);
-
+ 
   constructor(private readonly prisma: PrismaService) {}
-
+ 
   async crearPago(
     idorden: number,
     dto: PagoDto,
@@ -23,13 +24,13 @@ export class PagosService {
     const existente = await this.prisma.pagos.findUnique({
       where: { idorden },
     });
-
+ 
     if (existente) {
       throw new ConflictException(
         `Ya existe un pago registrado para la orden ${idorden}`,
       );
     }
-
+ 
     const pago = await this.prisma.pagos.create({
       data: {
         idorden,
@@ -45,18 +46,22 @@ export class PagosService {
         transactionid:   respuestaMp.id,
       },
     });
-
+ 
     this.logger.log(
       `Pago registrado: ID=${pago.id} | NrCompra=${pago.nrcompra} | Orden=${idorden} | MP=${respuestaMp.id}`,
     );
-
+ 
     return pago;
   }
-
+ 
   async obtenerPagoPorOrden(idorden: number): Promise<pagos | null> {
     return this.prisma.pagos.findUnique({ where: { idorden } });
   }
-
+ 
+  async obtenerPagoPorTransactionId(transactionid: string): Promise<pagos | null> {
+    return this.prisma.pagos.findFirst({ where: { transactionid } });
+  }
+ 
   async actualizarEstadoPago(
     idorden: number,
     estadoMp: string,
@@ -70,7 +75,26 @@ export class PagosService {
       },
     });
   }
-
+ 
+   async actualizarEstadoPorTransactionId(
+    transactionid: string,
+    estadoMp:      string,
+  ): Promise<pagos | null> {
+    const pago = await this.obtenerPagoPorTransactionId(transactionid);
+    if (!pago) return null;
+ 
+    const actualizado = await this.prisma.pagos.update({
+      where: { id: pago.id },
+      data:  { estado: this.mapearEstado(estadoMp) },
+    });
+ 
+    this.logger.log(
+      `Pago actualizado vía webhook | TransactionId=${transactionid} | Nuevo estado=${actualizado.estado}`,
+    );
+ 
+    return actualizado;
+  }
+ 
   private mapearEstado(estadoMp: string): string {
     const mapa: Record<string, string> = {
       processed:       'COMPLETADO',
