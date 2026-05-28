@@ -42,14 +42,13 @@ model departamento {
 }
 
 model detalleorden {
-  id            Int       @id @default(autoincrement())
-  idorden       Int
-  idcurso       String    @db.Char(24)
-  precio        Decimal   @db.Decimal(12, 2)
-  nombrecurso   String?   @db.VarChar(150)
-  orden         orden     @relation(fields: [idorden], references: [id])
+  id          Int     @id @default(autoincrement())
+  idorden     Int
+  idcurso     String  @db.Char(24)
+  precio      Decimal @db.Decimal(12, 2)
+  nombrecurso String? @db.VarChar(150)
+  orden       orden   @relation(fields: [idorden], references: [id])
 }
-
 
 model orden {
   id            Int            @id @default(autoincrement())
@@ -57,26 +56,25 @@ model orden {
   fechacreacion DateTime       @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
   estado        String         @db.VarChar(20)
   detalleorden  detalleorden[]
-  pagos         pagos?
   usuario       usuarios       @relation(fields: [idusuario], references: [id])
-
+  pagos         pagos?
 }
 
 model pagos {
-  id              Int             @id @default(autoincrement())
-  idorden         Int             @unique(map: "uq_pagos_idorden")
-  fechapago       DateTime        @db.Timestamp(6)
-  monto           Decimal         @db.Decimal(12, 2)
-  estado          String          @default("PENDIENTE" )
-  nrcompra        Int?            @default(autoincrement())
-  nombrepagante   String?         @db.VarChar(100)
-  emailpagante    String?         @db.VarChar(150)
-  transactionid   String?         @db.VarChar(150)
-  moneda          String?         @db.VarChar(10)
-  orden           orden           @relation(fields: [idorden], references: [id])
-  processing_mode String?         @default("automatic")
-  tipotarjeta     String?         @db.VarChar(20)
-  metodopago      String          @db.VarChar(10)
+  id              Int      @id @default(autoincrement())
+  idorden         Int      @unique(map: "uq_pagos_idorden")
+  metodopago      String   @db.VarChar(10)
+  fechapago       DateTime @db.Timestamp(6)
+  monto           Decimal  @db.Decimal(12, 2)
+  estado          String   @default("PENDIENTE")
+  nrcompra        Int?     @default(autoincrement())
+  tipotarjeta     String?  @db.VarChar(20)
+  nombrepagante   String?  @db.VarChar(100)
+  emailpagante    String?  @db.VarChar(150)
+  transactionid   String?  @db.VarChar(150)
+  moneda          String?  @db.VarChar(10)
+  processing_mode String?  @default("automatic")
+  orden           orden    @relation(fields: [idorden], references: [id])
 }
 
 model pais {

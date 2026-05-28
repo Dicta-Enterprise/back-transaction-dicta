@@ -6,6 +6,7 @@ import { ActualizarCarritoUseCase } from 'src/application/uses-cases/Carrito-rec
 import { EliminarCarritoUseCase } from 'src/application/uses-cases/Carrito-recovery/delete-carrito.usecase';
 import { PrismaService } from 'src/core/services/prisma/prisma.service';
 import { ObtenerCarritoUseCase } from 'src/application/uses-cases/Carrito-recovery/get-carrito.usecase';
+import { ObtenerCarritoPorUsuarioUseCase } from 'src/application/uses-cases/Carrito-recovery/get-carrito-by-user.usecase';
 
 
 @Module({
@@ -17,6 +18,7 @@ import { ObtenerCarritoUseCase } from 'src/application/uses-cases/Carrito-recove
     EliminarCarritoUseCase,
     PrismaService, 
     ObtenerCarritoUseCase,
+    ObtenerCarritoPorUsuarioUseCase,
   ],
 })
 export class CarritoModule {}
