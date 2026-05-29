@@ -8,12 +8,13 @@ import { PagosService }        from 'src/core/services/Order/pagos.service';
 
 import { CrearOrdenYPagarUseCase } from 'src/application/uses-cases/Order/create-order.usecase';
 import { OrdersController } from './order.controller'; 
+import { WebhookMercadoPagoController } from '../Webhook/Webhook mercadopago.controller';
 @Module({
   imports: [
     ConfigModule,   
     PrismaModule,   
   ],
-  controllers: [OrdersController], 
+  controllers: [OrdersController, WebhookMercadoPagoController], 
   providers: [
     OrdenService,
     MercadoPagoService,

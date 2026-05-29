@@ -1,3 +1,4 @@
+
 import {
   ConflictException,
   Injectable,
@@ -10,7 +11,7 @@ import { MpOrderResponse } from './mercadopago.service';
 @Injectable()
 export class PagosService {
   constructor(private readonly prisma: PrismaService) {}
-
+ 
   async crearPago(
     idorden: number,
     dto: PagoDto,
@@ -40,11 +41,15 @@ export class PagosService {
       },
     });
   }
-
+ 
   async obtenerPagoPorOrden(idorden: number): Promise<pagos | null> {
     return this.prisma.pagos.findUnique({ where: { idorden } });
   }
-
+ 
+  async obtenerPagoPorTransactionId(transactionid: string): Promise<pagos | null> {
+    return this.prisma.pagos.findFirst({ where: { transactionid } });
+  }
+ 
   async actualizarEstadoPago(
     idorden: number,
     estadoMp: string,
@@ -58,7 +63,23 @@ export class PagosService {
       },
     });
   }
-
+ 
+   async actualizarEstadoPorTransactionId(
+    transactionid: string,
+    estadoMp:      string,
+  ): Promise<pagos | null> {
+    const pago = await this.obtenerPagoPorTransactionId(transactionid);
+    if (!pago) return null;
+ 
+    const actualizado = await this.prisma.pagos.update({
+      where: { id: pago.id },
+      data:  { estado: this.mapearEstado(estadoMp) },
+    });
+ 
+    
+    return actualizado;
+  }
+ 
   private mapearEstado(estadoMp: string): string {
     const mapa: Record<string, string> = {
       processed: 'COMPLETADO',
