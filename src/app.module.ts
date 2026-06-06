@@ -6,10 +6,16 @@ import { PrismaModule } from './core/services/prisma/prisma.module';
 import { PagosModule } from './infraestructure/http/Order/pagos.module';
 import { CarritoModule } from './infraestructure/http/Carrito-recovery/carrito.module';
 
+import { ConfigModule } from '@nestjs/config';
+
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
     EventEmitterModule.forRoot(),
-    PrismaModule  ,
+    PrismaModule,
     PagosModule,
     CarritoModule,
   ],

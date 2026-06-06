@@ -75,6 +75,9 @@ model pagos {
   moneda          String?  @db.VarChar(10)
   processing_mode String?  @default("automatic")
   orden           orden    @relation(fields: [idorden], references: [id])
+  cufe           String?  @db.VarChar(200)
+  numero_factura String?  @db.VarChar(50)
+  factura_url    String?  @db.Text
 }
 
 model pais {

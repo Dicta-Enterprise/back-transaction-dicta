@@ -62,10 +62,17 @@ export class CrearOrdenYPagarUseCase {
       respuestaMp,
     );
 
+    if (dto.pago.documento_pagante) {
+      this.pagosService.guardarDocumentoTemporal(
+        orden.id,
+        dto.pago.documento_pagante,
+      );
+    }
+
     await this.ordenService.actualizarEstado(orden.id, respuestaMp.status);
 
-const primerPago = respuestaMp?.transactions?.payments?.[0];
-const estadoDetalle = primerPago?.status_detail ?? respuestaMp.status_detail ?? '';
+    const primerPago = respuestaMp?.transactions?.payments?.[0];
+    const estadoDetalle = primerPago?.status_detail ?? respuestaMp.status_detail ?? '';
 
     return {
       ordenId: orden.id,
