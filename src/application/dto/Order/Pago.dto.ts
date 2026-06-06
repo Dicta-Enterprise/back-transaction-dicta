@@ -66,5 +66,11 @@ export class PagoDto {
   @ApiPropertyOptional({ example: 'automatic', enum: ['automatic', 'manual'], default: 'automatic' })
   @IsOptional()
   processing_mode?: string;
+
+  @ApiPropertyOptional({ example: '1234567890', description: 'Documento del pagante para factura electrónica' })
+@IsOptional()
+@IsString()
+@MaxLength(20)
+documento_pagante?: string;
 }
  
