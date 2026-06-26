@@ -13,10 +13,8 @@ model carrito {
   idusuario      Int
   createdat      DateTime              @default(now()) @db.Timestamp(6)
   updatedat      DateTime              @default(now()) @updatedAt @db.Timestamp(6)
-  estado         String                @default("PENDIENTE") @db.VarChar(20)
   usuarios       usuarios              @relation(fields: [idusuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_carrito_usuario")
   cursos         carritoCurso[]
-  notificaciones notificacioncarrito[]
 }
 
 model carritoCurso {
@@ -24,15 +22,6 @@ model carritoCurso {
   carritoId Int
   idcurso   String  @db.Char(24)
   carrito   carrito @relation(fields: [carritoId], references: [id], onDelete: Cascade)
-}
-
-model notificacioncarrito {
-  id        Int      @id @default(autoincrement())
-  idcarrito Int
-  enviadoat DateTime @default(now()) @db.Timestamp(6)
-  messageid String?  @db.VarChar(200)
-  secuencia Int      @default(1)
-  carrito   carrito  @relation(fields: [idcarrito], references: [id], onDelete: Cascade)
 }
 
 model eventoCorreo {

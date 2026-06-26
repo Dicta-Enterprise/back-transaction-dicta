@@ -9,7 +9,7 @@ import { ObtenerCarritoUseCase } from 'src/application/uses-cases/Carrito-recove
 import { ObtenerCarritoPorUsuarioUseCase } from 'src/application/uses-cases/Carrito-recovery/get-carrito-by-user.usecase';
 import { CarritoAbandonadoUseCase } from 'src/application/uses-cases/Carrito-recovery/carrito-abandonado.usecase';
 import { CarritoService } from 'src/core/services/Carrito-recovery/carrito.service';
-import { CarritoMailerService } from 'src/core/services/Carrito-recovery/mailer.service';
+import { CarritoMailerService } from 'src/core/services/Carrito-recovery/carrito-mailer.service';
 import { PrismaService } from 'src/core/services/prisma/prisma.service';
 import { MailerModule } from 'src/core/services/mailer/mailer.module';
 import { WebhookController } from './webhook.controller';

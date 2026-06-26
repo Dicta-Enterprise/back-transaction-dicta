@@ -1,13 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/core/services/prisma/prisma.service';
-import { CarritoMailerService } from 'src/core/services/Carrito-recovery/mailer.service';
+import { CarritoMailerService } from 'src/core/services/Carrito-recovery/carrito-mailer.service';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from 'generated/prisma';
 
 type CarritoConRelaciones = Prisma.carritoGetPayload<{
   include: {
     cursos: true;
-    notificaciones: true;
     usuarios: {
       select: { id: true; email: true; username: true };
     };
@@ -26,87 +25,84 @@ export class CarritoAbandonadoUseCase {
 
   async ejecutar(): Promise<void> {
     const intervalos = this.config
-      .get<string>('CARRITO_INTERVALOS_HORAS', '1,24,72,168')
+      .get<string>('CARRITO_INTERVALOS_MINUTOS', '20,1440,4320')
       .split(',')
       .map(Number);
 
-    const limite = new Date(
-      Date.now() - intervalos[0] * 60 * 60 * 1000,
+    for (let intento = 1; intento <= intervalos.length; intento++) {
+      await this.procesarIntervalo(
+        intervalos[intento - 1],
+        intento,
+      );
+    }
+  }
+
+  private async procesarIntervalo(
+    minutos: number,
+    intento: number,
+  ): Promise<void> {
+    const ahora = new Date();
+
+    const desde = new Date(
+      ahora.getTime() - (minutos + 1) * 60 * 1000,
     );
 
-    this.logger.log(`Buscando carritos sin actividad desde ${limite.toISOString()}`);
+    const hasta = new Date(
+      ahora.getTime() - minutos * 60 * 1000,
+    );
 
     const carritos = await this.prisma.carrito.findMany({
       where: {
-        estado: 'PENDIENTE',
-        updatedat: { lte: limite },
-        cursos: { some: {} },
+        updatedat: {
+          gte: desde,
+          lte: hasta,
+        },
+        cursos: {
+          some: {},
+        },
       },
       include: {
         cursos: true,
-        notificaciones: true,
         usuarios: {
-          select: { id: true, email: true, username: true },
+          select: {
+            id: true,
+            email: true,
+            username: true,
+          },
         },
       },
     });
 
-    this.logger.log(`Carritos encontrados: ${carritos.length}`);
-
     for (const carrito of carritos) {
-      await this.notificar(carrito, intervalos);
+      await this.notificar(carrito, intento);
     }
   }
 
   private async notificar(
     carrito: CarritoConRelaciones,
-    intervalos: number[],
+    intento: number,
   ): Promise<void> {
-    const { usuarios, cursos, id, notificaciones } = carrito;
-
-    // cuántos recordatorios ya recibió
-    const totalEnviados = notificaciones.length;
-
-    // si ya recibió todos los recordatorios, ignorar
-    if (totalEnviados >= intervalos.length) {
-      this.logger.log(`Carrito ${id}: ya recibió todos los recordatorios`);
-      return;
-    }
-
-    // verificar si ya pasó el tiempo del siguiente intervalo
-    const siguienteIntervalo = intervalos[totalEnviados];
-    const ultimaNotificacion = notificaciones[totalEnviados - 1];
-
-    if (ultimaNotificacion) {
-      const tiempoDesdeUltima = Date.now() - ultimaNotificacion.enviadoat.getTime();
-      const intervaloEnMs = siguienteIntervalo * 60 * 60 * 1000;
-
-      if (tiempoDesdeUltima < intervaloEnMs) {
-        this.logger.log(`Carrito ${id}: aún no es tiempo del siguiente recordatorio`);
-        return;
-      }
-    }
+    const { usuarios, cursos, id } = carrito;
 
     try {
-      const { messageId } = await this.carritoMailerService.enviarRecordatorio({
+      await this.carritoMailerService.enviarRecordatorio({
+        intento,
         nombreUsuario: usuarios.username ?? 'Usuario',
         email: usuarios.email!,
         totalCursos: cursos.length,
-        urlCarrito: `${this.config.get('FRONTEND_URL')}/carrito`,
+        urlCarrito: `${this.config.get('FRONTEND_URL')}/cart`,
       });
 
-      await this.prisma.notificacioncarrito.create({
-        data: {
-          idcarrito: id,
-          messageid: messageId,
-          secuencia: totalEnviados + 1,
-        },
-      });
-
-      this.logger.log(`Recordatorio ${totalEnviados + 1}/${intervalos.length} enviado | carrito: ${id} | messageId: ${messageId}`);
+      this.logger.log(
+        `Correo ${intento} enviado | carrito: ${id}`,
+      );
     } catch (err) {
-      const mensaje = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Error al notificar carrito ${id}: ${mensaje}`);
+      const mensaje =
+        err instanceof Error ? err.message : String(err);
+
+      this.logger.error(
+        `Error al notificar carrito ${id}: ${mensaje}`,
+      );
     }
   }
 }

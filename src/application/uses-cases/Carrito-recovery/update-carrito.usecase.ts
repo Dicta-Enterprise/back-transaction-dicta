@@ -21,9 +21,6 @@ export class ActualizarCarritoUseCase {
       carritoDb.id,
       carritoDb.idusuario,
       carritoDb.cursos.map(c => c.idcurso),
-      carritoDb.estado,
-      carritoDb.createdat,
-      carritoDb.updatedat,
     );
     dto.cursosAgregar?.forEach(c => carrito.agregarCurso(c.idcurso));
     dto.cursosEliminar?.forEach(id => carrito.eliminarCurso(id));

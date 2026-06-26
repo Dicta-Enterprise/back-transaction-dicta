@@ -43,6 +43,11 @@ export interface MpOrderResponse {
   };
 }
 
+interface MpOrderRawResponse {
+  errors?: { code: string; message: string; details: string[] }[];
+  data?: MpOrderResponse;  
+}
+
 function montoAString(n: number): string {
   return Number(n.toFixed(2)).toString();
 }
@@ -68,13 +73,17 @@ export class MercadoPagoService {
         body: JSON.stringify(this.construirPayload(payload)),
       });
 
-      if (!response.ok) {
+      const raw = await response.json() as MpOrderRawResponse;
+
+      if (response.status === 402 || !response.ok) {
+        if (raw?.data?.status) return raw.data;
+
         throw new BadGatewayException(
           `MercadoPago rechazó la solicitud [${response.status}]`,
         );
       }
 
-      return await response.json() as MpOrderResponse;
+      return raw as unknown as MpOrderResponse;
     } catch (error) {
       if (error instanceof BadGatewayException) throw error;
       throw new InternalServerErrorException('No se pudo procesar el pago.');

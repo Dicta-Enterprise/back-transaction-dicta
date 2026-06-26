@@ -1,13 +1,17 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 
 import { CrearVentaDto } from 'src/application/dto/Order/create-orden.dto';
 import { OrdenService } from 'src/core/services/Order/orden.service';
 import { MercadoPagoService } from 'src/core/services/Order/mercadopago.service';
 import { PagosService } from 'src/core/services/Order/pagos.service';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from 'generated/prisma';
+import { PagoMailerService } from 'src/core/services/order/pago-mailer.service';
+import { PrismaService } from 'src/core/services/prisma/prisma.service';
 
 export interface PagoResultado {
   ordenId: number;
@@ -22,10 +26,15 @@ export interface PagoResultado {
 
 @Injectable()
 export class CrearOrdenYPagarUseCase {
+  private readonly logger = new Logger(CrearOrdenYPagarUseCase.name);
+
   constructor(
     private readonly ordenService: OrdenService,
     private readonly mercadoPagoService: MercadoPagoService,
     private readonly pagosService: PagosService,
+    private readonly pagoMailerService: PagoMailerService,
+    private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async ejecutar(dto: CrearVentaDto): Promise<PagoResultado> {
@@ -64,8 +73,27 @@ export class CrearOrdenYPagarUseCase {
 
     await this.ordenService.actualizarEstado(orden.id, respuestaMp.status);
 
-const primerPago = respuestaMp?.transactions?.payments?.[0];
-const estadoDetalle = primerPago?.status_detail ?? respuestaMp.status_detail ?? '';
+    const primerPago = respuestaMp?.transactions?.payments?.[0];
+    const estadoDetalle = primerPago?.status_detail ?? respuestaMp.status_detail ?? '';
+
+    // ─── Acciones post-pago exitoso ───────────────────────────────────────────
+if (respuestaMp.status === 'processed') {
+  const usuario = await this.prisma.usuarios.findUnique({
+    where: { id: dto.idusuario },
+    select: { email: true, username: true },
+  });
+
+  if (usuario?.email) {
+    await this.onPagoExitoso({
+      email: usuario.email,
+      nombreUsuario: usuario.username ?? dto.pago.nombrepagante,
+      nrcompra: pagoRegistrado?.nrcompra ?? orden.id,
+      cursos: dto.detalleOrden.map((d) => d.nombrecurso),
+      montoPagado: primerPago?.paid_amount ?? primerPago?.amount ?? '0',
+      idusuario: dto.idusuario,
+    });
+  }
+}
 
     return {
       ordenId: orden.id,
@@ -78,4 +106,38 @@ const estadoDetalle = primerPago?.status_detail ?? respuestaMp.status_detail ?? 
       fechaCreacion: respuestaMp.created_date ?? '',
     };
   }
+
+  // ─── Privado ──────────────────────────────────────────────────────────────
+
+  private async onPagoExitoso(data: {
+    email: string;
+    nombreUsuario: string;
+    nrcompra: number;
+    cursos: string[];
+    montoPagado: string;
+    idusuario: number;
+  }): Promise<void> {
+
+    const resultados = await Promise.allSettled([
+    this.pagoMailerService.moverACompradores(data.email),
+    this.pagoMailerService.enviarConfirmacion({
+      email: data.email,
+      nombreUsuario: data.nombreUsuario,
+      nrcompra: data.nrcompra,
+      cursos: data.cursos,
+      montoTotal: data.montoPagado,
+      urlPlataforma: this.config.get('FRONTEND_URL', ''),
+    }),
+    this.prisma.carrito.deleteMany({
+      where: { idusuario: data.idusuario },
+    }),
+  ]);
+
+  resultados.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      this.logger.error(`Fallo en acción post-pago [${i}]: ${r.reason}`);
+    }
+  });
+}
+  
 }

@@ -7,6 +7,7 @@ export interface CarritoMailData {
   email: string;
   totalCursos: number;
   urlCarrito: string;
+  intento: number;
 }
 
 @Injectable()
@@ -17,11 +18,38 @@ export class CarritoMailerService {
   ) {}
 
   async enviarRecordatorio(data: CarritoMailData): Promise<MailResult> {
+    let templateId: number;
+
+    switch (data.intento) {
+      case 1:
+        templateId = this.config.get<number>(
+          'BREVO_TEMPLATE_CARRITO_ABANDONADO_1',
+        )!;
+        break;
+
+      case 2:
+        templateId = this.config.get<number>(
+          'BREVO_TEMPLATE_CARRITO_ABANDONADO_2',
+        )!;
+        break;
+
+      case 3:
+        templateId = this.config.get<number>(
+          'BREVO_TEMPLATE_CARRITO_ABANDONADO_3',
+        )!;
+        break;
+
+      default:
+        templateId = this.config.get<number>(
+          'BREVO_TEMPLATE_CARRITO_ABANDONADO_1',
+        )!;
+    }
+
     return this.mailerService.enviar({
       to: data.email,
       nombreUsuario: data.nombreUsuario,
       subject: `${data.nombreUsuario}, tienes cursos esperándote 🎓`,
-      templateId: this.config.get<number>('BREVO_TEMPLATE_CARRITO_ABANDONADO'),
+      templateId,
       context: {
         nombreUsuario: data.nombreUsuario,
         totalCursos: data.totalCursos,

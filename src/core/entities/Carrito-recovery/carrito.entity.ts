@@ -3,7 +3,6 @@ export class Carrito {
     public readonly id: number | null,
     public readonly idUsuario: number,
     public cursos: string[],
-    public estado: string = 'PENDIENTE',  
     public readonly createdat?: Date,     
     public updatedat?: Date, 
   ) {}
@@ -21,9 +20,5 @@ export class Carrito {
 
   vaciar() {
     this.cursos = [];
-  }
-
-  marcarComoComprado() {
-    this.estado = 'COMPRADO';
   }
 }

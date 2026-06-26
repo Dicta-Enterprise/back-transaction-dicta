@@ -54,6 +54,7 @@ export class MailerService {
     if (options.templateId) {
       payload.templateId = Number(options.templateId);
       payload.params = options.context;
+      payload.subject = options.subject;
     } else if (options.template) {
       payload.subject = options.subject;
       payload.htmlContent = this.renderTemplate(options.template, options.context);
@@ -66,6 +67,34 @@ export class MailerService {
 
     return { messageId };
   }
+
+ async moverACompradores(email: string): Promise<void> {
+  const listaSinCompra = Number(this.config.get('BREVO_LISTA_SIN_COMPRA'));
+  const listaCompradores = Number(this.config.get('BREVO_LISTA_COMPRADORES'));
+  const apiKey = this.config.get<string>('BREVO_API_KEY');
+
+  const response = await fetch(
+    `https://api.brevo.com/v3/contacts/${encodeURIComponent(email)}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': apiKey,
+      },
+      body: JSON.stringify({
+        attributes: { ES_COMPRADOR: true },
+        listIds: [listaCompradores],
+        unlinkListIds: [listaSinCompra],
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`Brevo update failed: ${JSON.stringify(error)}`);
+  }
+
+}
 
   private renderTemplate(
     template: string,

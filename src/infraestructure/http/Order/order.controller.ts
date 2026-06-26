@@ -31,32 +31,48 @@ export class OrdersController {
   @Post()
   @ApiOperation({ summary: 'Crea una nueva venta (orden + detalle)' })
   @ApiBody({ type: CrearVentaDto })
-  @ApiResponse({ status: 201, description: 'La venta fue creada exitosamente.' })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
-  @ApiResponse({ status: 500, description: 'Error interno del servidor' })
+  @ApiResponse({ status: 201, description: 'Pago aprobado, venta creada.' })
+  @ApiResponse({ status: 202, description: 'Pago pendiente de confirmación.' })
+  @ApiResponse({ status: 402, description: 'Pago rechazado por MercadoPago.' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos.' })
+  @ApiResponse({ status: 500, description: 'Error interno del servidor.' })
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async create(@Body() dto: CrearVentaDto) {
     try {
       const result = await this.createUseCase.ejecutar(dto);
 
-      return {
-        statusCode: HttpStatus.CREATED,
-        data: result,
-        message: 'Venta creada exitosamente',
-      };
+      const estadoExitoso   = result.estadoOrden === 'processed';
+      const estadoPendiente = ['pending', 'action_required', 'processing'].includes(result.estadoOrden);
+
+      if (estadoExitoso) {
+        return { statusCode: 201, data: result, message: 'Venta creada exitosamente' };
+      }
+
+      if (estadoPendiente) {
+        throw new HttpException(
+          { statusCode: 202, data: result, message: 'Pago pendiente de confirmación' },
+          HttpStatus.ACCEPTED,
+        );
+      }
+
+      throw new HttpException(
+        { statusCode: 402, data: result, message: 'Pago rechazado' },
+        HttpStatus.PAYMENT_REQUIRED,
+      );
+
     } catch (error) {
+      if (error instanceof HttpException) throw error;
+
       if (error instanceof BadRequestException) {
         throw new HttpException(
-          { statusCode: HttpStatus.BAD_REQUEST, message: error.message, error: 'Bad Request' },
+          { statusCode: 400, message: error.message, error: 'Bad Request' },
           HttpStatus.BAD_REQUEST,
         );
       }
 
-      if (error instanceof HttpException) throw error;
-
       throw new HttpException(
         {
-          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          statusCode: 500,
           message: error instanceof Error ? error.message : 'Error desconocido',
           error: 'Internal Server Error',
         },
