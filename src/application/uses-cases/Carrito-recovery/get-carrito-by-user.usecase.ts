@@ -27,7 +27,10 @@ export class ObtenerCarritoPorUsuarioUseCase {
     return new Carrito(
       carritoDb.id,
       carritoDb.idusuario,
-      carritoDb.cursos.map(c => c.idcurso),
+      carritoDb.cursos.map(c => ({
+        idcurso: c.idcurso,
+        nombrecurso: c.nombrecurso,
+      })),
     );
   }
 }

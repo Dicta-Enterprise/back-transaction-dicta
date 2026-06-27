@@ -11,15 +11,19 @@ export class CrearCarritoUseCase {
     const carrito = new Carrito(
       null,
       dto.idUsuario,
-      dto.cursos.map(c => c.idcurso),
+      dto.cursos.map(c => ({
+        idcurso: c.idcurso,
+        nombrecurso: c.nombrecurso,
+      })),
     );
 
     const creado = await this.prisma.carrito.create({
       data: {
         idusuario: carrito.idUsuario,
         cursos: {
-          create: carrito.cursos.map(idcurso => ({
-            idcurso,
+          create: carrito.cursos.map(c => ({
+            idcurso: c.idcurso,
+            nombrecurso: c.nombrecurso,
           })),
         },
       },
@@ -29,7 +33,10 @@ export class CrearCarritoUseCase {
     return new Carrito(
       creado.id,
       creado.idusuario,
-      creado.cursos.map(c => c.idcurso),
+      creado.cursos.map(c => ({
+        idcurso: c.idcurso,
+        nombrecurso: c.nombrecurso,
+      })),
     );
   }
 }
