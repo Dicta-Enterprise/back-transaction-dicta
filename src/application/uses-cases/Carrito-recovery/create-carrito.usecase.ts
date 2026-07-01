@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { CrearCarritoDto } from 'src/application/dto/Carrito-recovery/create-carrito.dto';
 import { Carrito } from 'src/core/entities/Carrito-recovery/carrito.entity';
 import { PrismaService } from 'src/core/services/prisma/prisma.service';
@@ -8,20 +8,21 @@ export class CrearCarritoUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
   async execute(dto: CrearCarritoDto) {
-    const carrito = new Carrito(
-      null,
-      dto.idUsuario,
-      dto.cursos.map(c => ({
-        idcurso: c.idcurso,
-        nombrecurso: c.nombrecurso,
-      })),
-    );
+    const carritoExistente = await this.prisma.carrito.findFirst({
+      where: { idusuario: dto.idUsuario },
+    });
+
+    if (carritoExistente) {
+      throw new ConflictException(
+        `El usuario ${dto.idUsuario} ya tiene un carrito activo`
+      );
+    }
 
     const creado = await this.prisma.carrito.create({
       data: {
-        idusuario: carrito.idUsuario,
+        idusuario: dto.idUsuario,
         cursos: {
-          create: carrito.cursos.map(c => ({
+          create: dto.cursos.map(c => ({
             idcurso: c.idcurso,
             nombrecurso: c.nombrecurso,
           })),
