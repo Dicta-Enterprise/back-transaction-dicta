@@ -6,6 +6,7 @@ export interface CarritoMailData {
   nombreUsuario: string;
   email: string;
   totalCursos: number;
+  nombresCursos: string[];
   urlCarrito: string;
   intento: number;
 }
@@ -53,6 +54,7 @@ export class CarritoMailerService {
       context: {
         nombreUsuario: data.nombreUsuario,
         totalCursos: data.totalCursos,
+        nombresCursos: data.nombresCursos.join(', '),
         urlCarrito: data.urlCarrito,
         email: data.email,
         year: new Date().getFullYear(),

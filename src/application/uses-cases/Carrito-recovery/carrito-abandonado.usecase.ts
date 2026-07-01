@@ -30,36 +30,20 @@ export class CarritoAbandonadoUseCase {
       .map(Number);
 
     for (let intento = 1; intento <= intervalos.length; intento++) {
-      await this.procesarIntervalo(
-        intervalos[intento - 1],
-        intento,
-      );
+      await this.procesarIntervalo(intervalos[intento - 1], intento);
     }
   }
 
-  private async procesarIntervalo(
-    minutos: number,
-    intento: number,
-  ): Promise<void> {
+  private async procesarIntervalo(minutos: number, intento: number,
+): Promise<void> {
     const ahora = new Date();
-
-    const desde = new Date(
-      ahora.getTime() - (minutos + 1) * 60 * 1000,
-    );
-
-    const hasta = new Date(
-      ahora.getTime() - minutos * 60 * 1000,
-    );
+    const desde = new Date(ahora.getTime() - (minutos + 1) * 60 * 1000);
+    const hasta = new Date(ahora.getTime() - minutos * 60 * 1000);
 
     const carritos = await this.prisma.carrito.findMany({
       where: {
-        updatedat: {
-          gte: desde,
-          lte: hasta,
-        },
-        cursos: {
-          some: {},
-        },
+        updatedat: { gte: desde, lte: hasta },
+        cursos: { some: {} },
       },
       include: {
         cursos: true,
@@ -78,11 +62,13 @@ export class CarritoAbandonadoUseCase {
     }
   }
 
-  private async notificar(
-    carrito: CarritoConRelaciones,
-    intento: number,
-  ): Promise<void> {
+  private async notificar(carrito: CarritoConRelaciones, intento: number): Promise<void> {
     const { usuarios, cursos, id } = carrito;
+
+    if (!usuarios.email) {
+    this.logger.warn(`Carrito ${id} sin email de usuario, se omite`);
+    return;
+  }
 
     try {
       await this.carritoMailerService.enviarRecordatorio({
@@ -90,6 +76,7 @@ export class CarritoAbandonadoUseCase {
         nombreUsuario: usuarios.username ?? 'Usuario',
         email: usuarios.email!,
         totalCursos: cursos.length,
+        nombresCursos: cursos.map(c => c.nombrecurso),
         urlCarrito: `${this.config.get('FRONTEND_URL')}/cart`,
       });
 
@@ -97,12 +84,8 @@ export class CarritoAbandonadoUseCase {
         `Correo ${intento} enviado | carrito: ${id}`,
       );
     } catch (err) {
-      const mensaje =
-        err instanceof Error ? err.message : String(err);
-
-      this.logger.error(
-        `Error al notificar carrito ${id}: ${mensaje}`,
-      );
+      const mensaje = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Error al notificar carrito ${carrito.id}: ${mensaje}`);
     }
   }
 }
