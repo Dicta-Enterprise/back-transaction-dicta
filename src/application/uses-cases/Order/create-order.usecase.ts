@@ -71,29 +71,36 @@ export class CrearOrdenYPagarUseCase {
       respuestaMp,
     );
 
+    if (dto.pago.documento_pagante) {
+      this.pagosService.guardarDocumentoTemporal(
+        orden.id,
+        dto.pago.documento_pagante,
+      );
+    }
+
     await this.ordenService.actualizarEstado(orden.id, respuestaMp.status);
 
     const primerPago = respuestaMp?.transactions?.payments?.[0];
     const estadoDetalle = primerPago?.status_detail ?? respuestaMp.status_detail ?? '';
 
-    // ─── Acciones post-pago exitoso ───────────────────────────────────────────
-if (respuestaMp.status === 'processed') {
-  const usuario = await this.prisma.usuarios.findUnique({
-    where: { id: dto.idusuario },
-    select: { email: true, username: true },
-  });
 
-  if (usuario?.email) {
-    await this.onPagoExitoso({
-      email: usuario.email,
-      nombreUsuario: usuario.username ?? dto.pago.nombrepagante,
-      nrcompra: pagoRegistrado?.nrcompra ?? orden.id,
-      cursos: dto.detalleOrden.map((d) => d.nombrecurso),
-      montoPagado: primerPago?.paid_amount ?? primerPago?.amount ?? '0',
-      idusuario: dto.idusuario,
-    });
-  }
-}
+    if (respuestaMp.status === 'processed') {
+      const usuario = await this.prisma.usuarios.findUnique({
+        where: { id: dto.idusuario },
+        select: { email: true, username: true },
+      });
+
+      if (usuario?.email) {
+        await this.onPagoExitoso({
+          email: usuario.email,
+          nombreUsuario: usuario.username ?? dto.pago.nombrepagante,
+          nrcompra: pagoRegistrado?.nrcompra ?? orden.id,
+          cursos: dto.detalleOrden.map((d) => d.nombrecurso),
+          montoPagado: primerPago?.paid_amount ?? primerPago?.amount ?? '0',
+          idusuario: dto.idusuario,
+        });
+      }
+    }
 
     return {
       ordenId: orden.id,
@@ -106,8 +113,6 @@ if (respuestaMp.status === 'processed') {
       fechaCreacion: respuestaMp.created_date ?? '',
     };
   }
-
-  // ─── Privado ──────────────────────────────────────────────────────────────
 
   private async onPagoExitoso(data: {
     email: string;

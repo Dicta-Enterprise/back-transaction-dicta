@@ -8,8 +8,14 @@ import { CarritoModule } from './infraestructure/http/Carrito-recovery/carrito.m
 import { ScheduleModule } from '@nestjs/schedule';
 import { MailerModule } from './core/services/mailer/mailer.module';
 
+import { ConfigModule } from '@nestjs/config';
+
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     PrismaModule  ,

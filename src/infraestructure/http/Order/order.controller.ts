@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   Body,
   Controller,
@@ -45,7 +46,11 @@ export class OrdersController {
       const estadoPendiente = ['pending', 'action_required', 'processing'].includes(result.estadoOrden);
 
       if (estadoExitoso) {
-        return { statusCode: 201, data: result, message: 'Venta creada exitosamente' };
+        return {
+          statusCode: HttpStatus.CREATED,
+          data:       result,
+          message:    'Venta creada exitosamente',
+        };
       }
 
       if (estadoPendiente) {
@@ -61,6 +66,18 @@ export class OrdersController {
       );
 
     } catch (error) {
+      if (error instanceof BadGatewayException) {
+        const body = error.getResponse() as { mpStatus?: string; mpStatusDetail?: string };
+        throw new HttpException(
+          {
+            statusCode:     402,
+            mpStatus:       body.mpStatus       ?? 'failed',
+            mpStatusDetail: body.mpStatusDetail ?? 'failed',
+          },
+          HttpStatus.PAYMENT_REQUIRED,
+        );
+      }
+
       if (error instanceof HttpException) throw error;
 
       if (error instanceof BadRequestException) {
@@ -74,7 +91,7 @@ export class OrdersController {
         {
           statusCode: 500,
           message: error instanceof Error ? error.message : 'Error desconocido',
-          error: 'Internal Server Error',
+          error:    'Internal Server Error',
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
@@ -89,8 +106,8 @@ export class OrdersController {
     throw new HttpException(
       {
         statusCode: HttpStatus.NOT_IMPLEMENTED,
-        message: 'El endpoint GET /orders aun no esta implementado',
-        error: 'Not Implemented',
+        message:    'El endpoint GET /orders aun no esta implementado',
+        error:      'Not Implemented',
       },
       HttpStatus.NOT_IMPLEMENTED,
     );

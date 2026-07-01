@@ -75,18 +75,23 @@ export class MercadoPagoService {
 
       const raw = await response.json() as MpOrderRawResponse;
 
-      if (response.status === 402 || !response.ok) {
-        if (raw?.data?.status) return raw.data;
+      if (!response.ok) {
+        const statusDetail =
+          raw?.data?.transactions?.payments?.[0]?.status_detail ??
+          raw?.data?.status_detail ??
+          'failed';
 
-        throw new BadGatewayException(
-          `MercadoPago rechazó la solicitud [${response.status}]`,
-        );
+        throw new BadGatewayException({
+          mpStatus: raw?.data?.status ?? 'failed',
+          mpStatusDetail: statusDetail,
+        });
       }
 
-      return raw as unknown as MpOrderResponse;
+      return raw.data ?? (raw as unknown as MpOrderResponse);
+
     } catch (error) {
       if (error instanceof BadGatewayException) throw error;
-      throw new InternalServerErrorException('No se pudo procesar el pago.');
+      throw new InternalServerErrorException('No se pudo conectar con MercadoPago.');
     }
   }
 

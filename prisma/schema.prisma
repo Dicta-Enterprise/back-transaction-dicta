@@ -21,6 +21,7 @@ model carritoCurso {
   id        Int     @id @default(autoincrement())
   carritoId Int
   idcurso   String  @db.Char(24)
+  nombrecurso String? @db.VarChar(150)
   carrito   carrito @relation(fields: [carritoId], references: [id], onDelete: Cascade)
 }
 
@@ -86,6 +87,9 @@ model pagos {
   moneda          String?  @db.VarChar(10)
   processing_mode String?  @default("automatic")
   orden           orden    @relation(fields: [idorden], references: [id])
+  cufe           String?  @db.VarChar(200)
+  numero_factura String?  @db.VarChar(50)
+  factura_url    String?  @db.Text
 }
 
 model pais {
