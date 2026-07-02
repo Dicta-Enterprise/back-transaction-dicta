@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   Body,
   Controller,
@@ -65,6 +66,18 @@ export class OrdersController {
       );
 
     } catch (error) {
+      if (error instanceof BadGatewayException) {
+        const body = error.getResponse() as { mpStatus?: string; mpStatusDetail?: string };
+        throw new HttpException(
+          {
+            statusCode:     402,
+            mpStatus:       body.mpStatus       ?? 'failed',
+            mpStatusDetail: body.mpStatusDetail ?? 'failed',
+          },
+          HttpStatus.PAYMENT_REQUIRED,
+        );
+      }
+
       if (error instanceof HttpException) throw error;
 
       if (error instanceof BadRequestException) {
@@ -77,8 +90,8 @@ export class OrdersController {
       throw new HttpException(
         {
           statusCode: 500,
-          message:    error instanceof Error ? error.message : 'Error desconocido',
-          error:      'Internal Server Error',
+          message: error instanceof Error ? error.message : 'Error desconocido',
+          error:    'Internal Server Error',
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );

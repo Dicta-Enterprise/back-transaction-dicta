@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, Length } from 'class-validator';
+import { IsNotEmpty, IsString, Length, MaxLength } from 'class-validator';
 
 export class CarritoCursoDto {
   @ApiProperty({
@@ -9,4 +9,10 @@ export class CarritoCursoDto {
   @IsString()
   @Length(24, 24)
   idcurso!: string;
+
+  @ApiProperty({ example: 'Marketing Digital' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(150)
+  nombrecurso!: string;
 }

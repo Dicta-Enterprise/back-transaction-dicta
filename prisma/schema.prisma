@@ -18,6 +18,7 @@ model carritoCurso {
   id        Int     @id @default(autoincrement())
   carritoId Int
   idcurso   String  @db.Char(24)
+  nombrecurso String? @db.VarChar(150)
   carrito   carrito @relation(fields: [carritoId], references: [id], onDelete: Cascade)
 }
 

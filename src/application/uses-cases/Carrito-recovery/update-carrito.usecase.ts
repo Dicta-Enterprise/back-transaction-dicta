@@ -20,9 +20,12 @@ export class ActualizarCarritoUseCase {
     const carrito = new Carrito(
       carritoDb.id,
       carritoDb.idusuario,
-      carritoDb.cursos.map(c => c.idcurso),
+      carritoDb.cursos.map(c => ({
+        idcurso: c.idcurso,
+        nombrecurso: c.nombrecurso,
+      })),
     );
-    dto.cursosAgregar?.forEach(c => carrito.agregarCurso(c.idcurso));
+    dto.cursosAgregar?.forEach(c => carrito.agregarCurso(c.idcurso, c.nombrecurso));
     dto.cursosEliminar?.forEach(id => carrito.eliminarCurso(id));
 
     await this.prisma.carritoCurso.deleteMany({
@@ -30,9 +33,10 @@ export class ActualizarCarritoUseCase {
     });
 
     await this.prisma.carritoCurso.createMany({
-      data: carrito.cursos.map(idcurso => ({
+      data: carrito.cursos.map(c => ({
         carritoId: carrito.id!,
-        idcurso,
+        idcurso: c.idcurso,
+        nombrecurso: c.nombrecurso,
       })),
       skipDuplicates: true,
     });
