@@ -3,6 +3,8 @@ export class Carrito {
     public readonly id: number | null,
     public readonly idUsuario: number,
     public cursos: { idcurso: string; nombrecurso: string }[],
+    public readonly createdat?: Date,     
+    public updatedat?: Date,
   ) {}
 
   agregarCurso(idcurso: string, nombrecurso: string) {

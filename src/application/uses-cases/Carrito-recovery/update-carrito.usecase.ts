@@ -41,6 +41,11 @@ export class ActualizarCarritoUseCase {
       skipDuplicates: true,
     });
 
+    await this.prisma.carrito.update({
+      where: { id: carrito.id! },
+      data: { updatedat: new Date() },
+    });
+
     return carrito;
   }
 }

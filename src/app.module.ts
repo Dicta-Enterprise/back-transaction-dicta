@@ -5,6 +5,8 @@ import { AppService } from './app.service';
 import { PrismaModule } from './core/services/prisma/prisma.module';
 import { PagosModule } from './infraestructure/http/Order/pagos.module';
 import { CarritoModule } from './infraestructure/http/Carrito-recovery/carrito.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { MailerModule } from './core/services/mailer/mailer.module';
 
 import { ConfigModule } from '@nestjs/config';
 
@@ -15,7 +17,9 @@ import { ConfigModule } from '@nestjs/config';
       envFilePath: '.env',
     }),
     EventEmitterModule.forRoot(),
-    PrismaModule,
+    ScheduleModule.forRoot(),
+    PrismaModule  ,
+    MailerModule,
     PagosModule,
     CarritoModule,
   ],

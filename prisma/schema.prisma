@@ -9,9 +9,12 @@ datasource db {
 }
 
 model carrito {
-  id        Int            @id @default(autoincrement())
-  idusuario Int
-  cursos    carritoCurso[]
+  id             Int                   @id @default(autoincrement())
+  idusuario      Int
+  createdat      DateTime              @default(now()) @db.Timestamp(6)
+  updatedat      DateTime              @default(now()) @updatedAt @db.Timestamp(6)
+  usuarios       usuarios              @relation(fields: [idusuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_carrito_usuario")
+  cursos         carritoCurso[]
 }
 
 model carritoCurso {
@@ -20,6 +23,14 @@ model carritoCurso {
   idcurso   String  @db.Char(24)
   nombrecurso String? @db.VarChar(150)
   carrito   carrito @relation(fields: [carritoId], references: [id], onDelete: Cascade)
+}
+
+model eventoCorreo {
+  id        Int      @id @default(autoincrement())
+  messageid String?  @db.VarChar(200)
+  evento    String   @db.VarChar(50)
+  email     String?  @db.VarChar(150)
+  createdat DateTime @default(now()) @db.Timestamp(6)
 }
 
 model accesos {
@@ -147,6 +158,7 @@ model usuarios {
   fechadecreacion   DateTime?
   estado            Int?      @db.SmallInt
   idrol             Int?
+  carrito           carrito[]
   orden             orden[]
   perfil            perfil[]
   persona           persona[]
