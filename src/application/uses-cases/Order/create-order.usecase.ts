@@ -38,6 +38,12 @@ export class CrearOrdenYPagarUseCase {
   ) {}
 
   async ejecutar(dto: CrearVentaDto): Promise<PagoResultado> {
+    if (!dto.aceptoTerminos) {
+      throw new BadRequestException(
+        'Debes aceptar los Términos y Condiciones para realizar la compra.',
+      );
+    }
+    
     const montoEsperado = dto.detalleOrden.reduce(
       (acc, d) => acc.add(new Prisma.Decimal(d.precio)),
       new Prisma.Decimal(0),

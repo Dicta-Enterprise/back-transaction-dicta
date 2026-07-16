@@ -70,6 +70,7 @@ model orden {
   detalleorden  detalleorden[]
   usuario       usuarios       @relation(fields: [idusuario], references: [id])
   pagos         pagos?
+  acepto_terminos Boolean @default(false)
 }
 
 model pagos {

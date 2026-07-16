@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  ArrayMinSize, IsArray, IsEnum, IsInt,
+  ArrayMinSize, IsArray, IsBoolean, IsEnum, IsInt,
   IsPositive, ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -24,7 +24,11 @@ export class CrearVentaDto {
  
   @ApiProperty({ example: 'PENDIENTE', enum: EstadoOrden })
   @IsEnum(EstadoOrden)
-  estado!: EstadoOrdenType;          
+  estado!: EstadoOrdenType;
+
+  @ApiProperty({ example: true })
+  @IsBoolean()
+  aceptoTerminos!: boolean;
  
   @ApiProperty({ type: [DetalleOrdenDto], minItems: 1 })
   @IsArray()
