@@ -35,11 +35,8 @@ model eventoCorreo {
 
 model accesos {
   id            Int       @id @default(autoincrement())
-  idrol         Int
-  fechacreacion DateTime?
-  estado        Int?      @db.SmallInt
+  estado        Int?      @default(1) @db.SmallInt
   descripcion   String?   @db.VarChar(200)
-  rol           rol       @relation(fields: [idrol], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_accesos_rol")
 }
 
 model departamento {
@@ -106,9 +103,9 @@ model pais {
 model perfil {
   id        Int       @id @default(autoincrement())
   nombre    String?   @db.VarChar(50)
-  password  String?   @db.VarChar(50)
+  password  String?   @db.VarChar(255)
   estado    Int?      @db.SmallInt
-  imageurl  String?   @db.VarChar(100)
+  imageurl  String?   @db.Text
   idusuario Int?
   idrol     Int?
   rol       rol?      @relation(fields: [idrol], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -145,7 +142,6 @@ model rol {
   estado      Int?       @db.SmallInt
   descripcion String?    @db.VarChar(200)
   tipo        String?    @db.VarChar(50)
-  accesos     accesos[]
   perfil      perfil[]
   usuarios    usuarios[]
 }
@@ -154,8 +150,7 @@ model usuarios {
   id                Int       @id @default(autoincrement())
   username          String?   @db.VarChar(50)
   email             String?   @db.VarChar(50)
-  password          String?   @db.VarChar(50)
-  confirmarpassword String?   @db.VarChar(50)
+  password          String?   @db.VarChar(255)
   fechadecreacion   DateTime?
   estado            Int?      @db.SmallInt
   idrol             Int?
