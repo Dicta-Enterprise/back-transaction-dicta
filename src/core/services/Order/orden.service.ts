@@ -18,6 +18,7 @@ export class OrdenService {
         data: {
           idusuario: dto.idusuario,
           estado: EstadoOrden.PENDIENTE,
+          acepto_terminos: dto.aceptoTerminos,
         },
       });
 

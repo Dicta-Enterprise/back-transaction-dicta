@@ -12,6 +12,7 @@ export class OrdenEntity {
     public estado: string,                    
     public detalleOrden: DetalleOrdenEntity[],
     public pago: pagosEntity,
+    public aceptoTerminos: boolean = false,
   ) {}
   
  static fromPrismaFull(data: {
@@ -26,6 +27,7 @@ export class OrdenEntity {
       data.orden.estado,
       DetalleOrdenEntity.fromPrismaList(data.detalleorden),
       pagosEntity.fromPrisma(data.pago),
+      data.orden.acepto_terminos,
     );
   }
 }
