@@ -12,6 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from 'generated/prisma';
 import { PagoMailerService } from 'src/core/services/order/pago-mailer.service';
 import { PrismaService } from 'src/core/services/prisma/prisma.service';
+import { AuthApiService } from 'src/core/services/auth/auth-api.service';
 
 export interface PagoResultado {
   ordenId: number;
@@ -35,6 +36,7 @@ export class CrearOrdenYPagarUseCase {
     private readonly pagoMailerService: PagoMailerService,
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly authApiService: AuthApiService,
   ) {}
 
   async ejecutar(dto: CrearVentaDto): Promise<PagoResultado> {
@@ -91,10 +93,7 @@ export class CrearOrdenYPagarUseCase {
 
 
     if (respuestaMp.status === 'processed') {
-      const usuario = await this.prisma.usuarios.findUnique({
-        where: { id: dto.idusuario },
-        select: { email: true, username: true },
-      });
+      const usuario = await this.authApiService.obtenerUsuario(orden.idusuario);
 
       if (usuario?.email) {
         await this.onPagoExitoso({

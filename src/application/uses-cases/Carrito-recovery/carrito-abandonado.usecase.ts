@@ -3,13 +3,11 @@ import { PrismaService } from 'src/core/services/prisma/prisma.service';
 import { CarritoMailerService } from 'src/core/services/Carrito-recovery/carrito-mailer.service';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from 'generated/prisma';
+import { AuthApiService } from 'src/core/services/auth/auth-api.service';
 
-type CarritoConRelaciones = Prisma.carritoGetPayload<{
+type CarritoConCursos = Prisma.carritoGetPayload<{
   include: {
     cursos: true;
-    usuarios: {
-      select: { id: true; email: true; username: true };
-    };
   };
 }>;
 
@@ -21,6 +19,7 @@ export class CarritoAbandonadoUseCase {
     private readonly prisma: PrismaService,
     private readonly carritoMailerService: CarritoMailerService,
     private readonly config: ConfigService,
+    private readonly authApiService: AuthApiService,
   ) {}
 
   async ejecutar(): Promise<void> {
@@ -47,13 +46,6 @@ export class CarritoAbandonadoUseCase {
       },
       include: {
         cursos: true,
-        usuarios: {
-          select: {
-            id: true,
-            email: true,
-            username: true,
-          },
-        },
       },
     });
 
@@ -62,26 +54,37 @@ export class CarritoAbandonadoUseCase {
     }
   }
 
-  private async notificar(carrito: CarritoConRelaciones, intento: number): Promise<void> {
-    const { usuarios, cursos, id } = carrito;
+  private async notificar(carrito: CarritoConCursos, intento: number): Promise<void> {
+    let usuario;
 
-    if (!usuarios.email) {
-    this.logger.warn(`Carrito ${id} sin email de usuario, se omite`);
-    return;
-  }
+    try {
+      usuario = await this.authApiService.obtenerUsuario(carrito.idusuario);
+    } catch {
+      this.logger.error(
+        `No se pudo obtener el usuario ${carrito.idusuario}`,
+      );
+      return;
+    }
+
+    if (!usuario.email) {
+      this.logger.warn(
+        `Carrito ${carrito.id} sin información del usuario`,
+      );
+      return;
+    }
 
     try {
       await this.carritoMailerService.enviarRecordatorio({
         intento,
-        nombreUsuario: usuarios.username ?? 'Usuario',
-        email: usuarios.email!,
-        totalCursos: cursos.length,
-        nombresCursos: cursos.map(c => c.nombrecurso),
+        nombreUsuario: usuario.username ?? 'Usuario',
+        email: usuario.email,
+        totalCursos: carrito.cursos.length,
+        nombresCursos: carrito.cursos.map(c => c.nombrecurso),
         urlCarrito: `${this.config.get('FRONTEND_URL')}/cart`,
       });
 
       this.logger.log(
-        `Correo ${intento} enviado | carrito: ${id}`,
+        `Correo ${intento} enviado | carrito: ${carrito.id}`,
       );
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : String(err);

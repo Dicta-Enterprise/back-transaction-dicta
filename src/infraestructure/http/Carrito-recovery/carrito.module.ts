@@ -14,6 +14,7 @@ import { PrismaService } from 'src/core/services/prisma/prisma.service';
 import { MailerModule } from 'src/core/services/mailer/mailer.module';
 import { WebhookController } from './webhook.controller';
 import { WebhookBrevoUseCase } from 'src/application/uses-cases/Carrito-recovery/webhook-brevo.usecase';
+import { AuthApiService } from 'src/core/services/auth/auth-api.service';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { WebhookBrevoUseCase } from 'src/application/uses-cases/Carrito-recovery
     PrismaService,
     CarritoService,
     CarritoMailerService,
+    AuthApiService,
     CrearCarritoUseCase,
     ActualizarCarritoUseCase,
     EliminarCarritoUseCase,
