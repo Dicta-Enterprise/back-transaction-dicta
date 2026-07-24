@@ -59,6 +59,23 @@ export class OrdenService {
     });
   }
 
+  async obtenerCursosComprados(idusuario: number): Promise<string[]> {
+    const ordenes = await this.prisma.orden.findMany({
+      where: {
+        idusuario,
+        estado: EstadoOrden.COMPLETADO,
+      },
+      include: {
+        detalleorden: {
+          select: { idcurso: true },
+        },
+      },
+    });
+
+    const cursosIds = ordenes.flatMap(o => o.detalleorden.map(d => d.idcurso));
+    return [...new Set(cursosIds)];
+  }
+
   async actualizarEstado(idOrden: number, estadoMp: string): Promise<orden> {
     return this.prisma.orden.update({
       where: { id: idOrden },

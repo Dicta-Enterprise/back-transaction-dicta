@@ -1,22 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from 'src/core/services/prisma/prisma.service';
 import { CarritoMailerService } from 'src/core/services/Carrito-recovery/carrito-mailer.service';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from 'generated/prisma';
 import { AuthApiService } from 'src/core/services/auth/auth-api.service';
-
-type CarritoConCursos = Prisma.carritoGetPayload<{
-  include: {
-    cursos: true;
-  };
-}>;
+import { Inject } from '@nestjs/common';
+import { CARRITO_REPOSITORY } from 'src/core/constants/constants';
+import { Carrito } from 'src/core/entities/Carrito-recovery/carrito.entity';
+import { CarritoRepository } from 'src/core/repositories/carrito-repository';
 
 @Injectable()
 export class CarritoAbandonadoUseCase {
   private readonly logger = new Logger(CarritoAbandonadoUseCase.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(CARRITO_REPOSITORY)
+    private readonly carritoRepository: CarritoRepository,
     private readonly carritoMailerService: CarritoMailerService,
     private readonly config: ConfigService,
     private readonly authApiService: AuthApiService,
@@ -33,43 +30,30 @@ export class CarritoAbandonadoUseCase {
     }
   }
 
-  private async procesarIntervalo(minutos: number, intento: number,
-): Promise<void> {
+  private async procesarIntervalo(minutos: number, intento: number): Promise<void> {
     const ahora = new Date();
     const desde = new Date(ahora.getTime() - (minutos + 1) * 60 * 1000);
     const hasta = new Date(ahora.getTime() - minutos * 60 * 1000);
 
-    const carritos = await this.prisma.carrito.findMany({
-      where: {
-        updatedat: { gte: desde, lte: hasta },
-        cursos: { some: {} },
-      },
-      include: {
-        cursos: true,
-      },
-    });
+    const carritos = await this.carritoRepository.findAbandonados(desde, hasta);
 
     for (const carrito of carritos) {
       await this.notificar(carrito, intento);
     }
   }
 
-  private async notificar(carrito: CarritoConCursos, intento: number): Promise<void> {
+  private async notificar(carrito: Carrito, intento: number): Promise<void> {
     let usuario;
 
     try {
-      usuario = await this.authApiService.obtenerUsuario(carrito.idusuario);
+      usuario = await this.authApiService.obtenerUsuario(carrito.idUsuario);
     } catch {
-      this.logger.error(
-        `No se pudo obtener el usuario ${carrito.idusuario}`,
-      );
+      this.logger.error(`No se pudo obtener el usuario ${carrito.idUsuario}`);
       return;
     }
 
     if (!usuario.email) {
-      this.logger.warn(
-        `Carrito ${carrito.id} sin información del usuario`,
-      );
+      this.logger.warn(`Carrito ${carrito.id} sin información del usuario`);
       return;
     }
 
@@ -83,9 +67,7 @@ export class CarritoAbandonadoUseCase {
         urlCarrito: `${this.config.get('FRONTEND_URL')}/cart`,
       });
 
-      this.logger.log(
-        `Correo ${intento} enviado | carrito: ${carrito.id}`,
-      );
+      this.logger.log(`Correo ${intento} enviado | carrito: ${carrito.id}`);
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : String(err);
       this.logger.error(`Error al notificar carrito ${carrito.id}: ${mensaje}`);
