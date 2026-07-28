@@ -14,19 +14,28 @@ import { PrismaService } from 'src/core/services/prisma/prisma.service';
 import { MailerModule } from 'src/core/services/mailer/mailer.module';
 import { WebhookController } from './webhook.controller';
 import { WebhookBrevoUseCase } from 'src/application/uses-cases/Carrito-recovery/webhook-brevo.usecase';
+import { AuthApiService } from 'src/core/services/auth/auth-api.service';
+import { CARRITO_REPOSITORY } from 'src/core/constants/constants';
+import { CarritoPrismaRepository } from 'src/infraestructure/persistence/carrito.prisma.repository';
 
 @Module({
   imports: [
     ConfigModule,
     MailerModule
   ],
-  controllers: [CarritoController,
+  controllers: [
+    CarritoController,
     WebhookController
   ],
   providers: [
     PrismaService,
     CarritoService,
     CarritoMailerService,
+    AuthApiService,
+    {
+      provide: CARRITO_REPOSITORY,
+      useClass: CarritoPrismaRepository,
+    },
     CrearCarritoUseCase,
     ActualizarCarritoUseCase,
     EliminarCarritoUseCase,

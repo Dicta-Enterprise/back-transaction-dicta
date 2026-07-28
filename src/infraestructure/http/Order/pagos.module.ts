@@ -14,6 +14,7 @@ import { EmitirFacturaElectronicaUseCase }  from 'src/application/uses-cases/Fac
 import { OrdersController } from './order.controller'; 
 
 import { WebhookMercadoPagoController }  from '../Webhook/Webhook.mercadopago.controller';
+import { AuthApiService } from 'src/core/services/auth/auth-api.service';
 
 @Module({
   imports: [
@@ -32,7 +33,7 @@ import { WebhookMercadoPagoController }  from '../Webhook/Webhook.mercadopago.co
     PagosService,
     PagoMailerService,        
     FactusService,
-
+    AuthApiService,
     CrearOrdenYPagarUseCase,
     EmitirFacturaElectronicaUseCase,
   ],

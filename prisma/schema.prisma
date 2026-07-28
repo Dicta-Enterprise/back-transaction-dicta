@@ -13,7 +13,6 @@ model carrito {
   idusuario      Int
   createdat      DateTime              @default(now()) @db.Timestamp(6)
   updatedat      DateTime              @default(now()) @updatedAt @db.Timestamp(6)
-  usuarios       usuarios              @relation(fields: [idusuario], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_carrito_usuario")
   cursos         carritoCurso[]
 }
 
@@ -33,23 +32,6 @@ model eventoCorreo {
   createdat DateTime @default(now()) @db.Timestamp(6)
 }
 
-model accesos {
-  id            Int       @id @default(autoincrement())
-  estado        Int?      @default(1) @db.SmallInt
-  descripcion   String?   @db.VarChar(200)
-}
-
-model departamento {
-  id              Int         @id @default(autoincrement())
-  idpais          Int
-  nombre          String      @db.VarChar(80)
-  estado          Int         @default(1) @db.SmallInt
-  fechacreacion   DateTime    @default(now()) @db.Timestamp(6)
-  fechaactualizar DateTime?   @db.Timestamp(6)
-  pais            pais        @relation(fields: [idpais], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_departamento_pais")
-  provincia       provincia[]
-}
-
 model detalleorden {
   id          Int     @id @default(autoincrement())
   idorden     Int
@@ -65,7 +47,6 @@ model orden {
   fechacreacion DateTime       @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
   estado        String         @db.VarChar(20)
   detalleorden  detalleorden[]
-  usuario       usuarios       @relation(fields: [idusuario], references: [id])
   pagos         pagos?
   acepto_terminos Boolean @default(false)
 }
@@ -88,75 +69,4 @@ model pagos {
   cufe           String?  @db.VarChar(200)
   numero_factura String?  @db.VarChar(50)
   factura_url    String?  @db.Text
-}
-
-model pais {
-  id              Int            @id @default(autoincrement())
-  nombre          String         @db.VarChar(80)
-  estado          Int            @default(1) @db.SmallInt
-  fechacreacion   DateTime       @default(now()) @db.Timestamp(6)
-  fechaactualizar DateTime?      @db.Timestamp(6)
-  departamento    departamento[]
-  persona         persona[]
-}
-
-model perfil {
-  id        Int       @id @default(autoincrement())
-  nombre    String?   @db.VarChar(50)
-  password  String?   @db.VarChar(255)
-  estado    Int?      @db.SmallInt
-  imageurl  String?   @db.Text
-  idusuario Int?
-  idrol     Int?
-  rol       rol?      @relation(fields: [idrol], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  usuarios  usuarios? @relation(fields: [idusuario], references: [id], onDelete: NoAction, onUpdate: NoAction)
-}
-
-model persona {
-  id           Int       @id @default(autoincrement())
-  nombre       String?   @db.VarChar(50)
-  apellidopat  String?   @db.VarChar(50)
-  apellidomat  String?   @db.VarChar(50)
-  documento    Int?
-  telefono     Int?
-  idusuario    Int?
-  codigopostal String?   @db.VarChar(10)
-  idpais       Int?
-  pais         pais?     @relation(fields: [idpais], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_persona_pais")
-  usuarios     usuarios? @relation(fields: [idusuario], references: [id], onDelete: NoAction, onUpdate: NoAction)
-}
-
-model provincia {
-  id              Int          @id @default(autoincrement())
-  iddepartamento  Int
-  nombre          String       @db.VarChar(80)
-  estado          Int          @default(1) @db.SmallInt
-  fechacreacion   DateTime     @default(now()) @db.Timestamp(6)
-  fechaactualizar DateTime?    @db.Timestamp(6)
-  departamento    departamento @relation(fields: [iddepartamento], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_provincia_departamento")
-}
-
-model rol {
-  id          Int        @id
-  nombrerol   String?    @db.VarChar(50)
-  estado      Int?       @db.SmallInt
-  descripcion String?    @db.VarChar(200)
-  tipo        String?    @db.VarChar(50)
-  perfil      perfil[]
-  usuarios    usuarios[]
-}
-
-model usuarios {
-  id                Int       @id @default(autoincrement())
-  username          String?   @db.VarChar(50)
-  email             String?   @db.VarChar(50)
-  password          String?   @db.VarChar(255)
-  fechadecreacion   DateTime?
-  estado            Int?      @db.SmallInt
-  idrol             Int?
-  carrito           carrito[]
-  orden             orden[]
-  perfil            perfil[]
-  persona           persona[]
-  rol               rol?      @relation(fields: [idrol], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }

@@ -7,13 +7,6 @@ export class ObtenerCarritoPorUsuarioUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
   async execute(usuarioId: number) {
-    const usuarioExiste = await this.prisma.usuarios.findUnique({
-      where: { id: usuarioId },
-    });
-
-    if (!usuarioExiste) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
 
     const carritoDb = await this.prisma.carrito.findFirst({
       where: { idusuario: usuarioId },
