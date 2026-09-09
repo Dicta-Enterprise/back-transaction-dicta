@@ -9,19 +9,19 @@ datasource db {
 }
 
 model carrito {
-  id             Int                   @id @default(autoincrement())
-  idusuario      Int
-  createdat      DateTime              @default(now()) @db.Timestamp(6)
-  updatedat      DateTime              @default(now()) @updatedAt @db.Timestamp(6)
-  cursos         carritoCurso[]
+  id        Int            @id @default(autoincrement())
+  idusuario Int
+  createdat DateTime       @default(now()) @db.Timestamp(6)
+  updatedat DateTime       @default(now()) @updatedAt @db.Timestamp(6)
+  cursos    carritoCurso[]
 }
 
 model carritoCurso {
-  id        Int     @id @default(autoincrement())
-  carritoId Int
-  idcurso   String  @db.Char(24)
+  id          Int     @id @default(autoincrement())
+  carritoId   Int
+  idcurso     String  @db.Char(24)
   nombrecurso String? @db.VarChar(150)
-  carrito   carrito @relation(fields: [carritoId], references: [id], onDelete: Cascade)
+  carrito     carrito @relation(fields: [carritoId], references: [id], onDelete: Cascade)
 }
 
 model eventoCorreo {
@@ -42,13 +42,13 @@ model detalleorden {
 }
 
 model orden {
-  id            Int            @id @default(autoincrement())
-  idusuario     Int
-  fechacreacion DateTime       @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
-  estado        String         @db.VarChar(20)
-  detalleorden  detalleorden[]
-  pagos         pagos?
-  acepto_terminos Boolean @default(false)
+  id              Int            @id @default(autoincrement())
+  idusuario       Int
+  fechacreacion   DateTime       @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  estado          String         @db.VarChar(20)
+  detalleorden    detalleorden[]
+  pagos           pagos?
+  acepto_terminos Boolean        @default(false)
 }
 
 model pagos {
@@ -58,7 +58,7 @@ model pagos {
   fechapago       DateTime @db.Timestamp(6)
   monto           Decimal  @db.Decimal(12, 2)
   estado          String   @default("PENDIENTE")
-  nrcompra        Int?     @default(autoincrement())
+  nrcompra        Int     @default(autoincrement())
   tipotarjeta     String?  @db.VarChar(20)
   nombrepagante   String?  @db.VarChar(100)
   emailpagante    String?  @db.VarChar(150)
@@ -66,7 +66,148 @@ model pagos {
   moneda          String?  @db.VarChar(10)
   processing_mode String?  @default("automatic")
   orden           orden    @relation(fields: [idorden], references: [id])
-  cufe           String?  @db.VarChar(200)
-  numero_factura String?  @db.VarChar(50)
-  factura_url    String?  @db.Text
+  cufe            String?  @db.VarChar(200)
+  numero_factura  String?  @db.VarChar(50)
+  factura_url     String?  @db.Text
+  factura Factura?
+}
+
+enum EstadoPago {
+  PENDIENTE
+  PAGADO
+  RECHAZADO
+  REEMBOLSADO
+}
+
+enum EstadoFactura {
+  EMITIDA
+  ANULADA
+}
+
+model DatosFacturacion {
+  id String @id @default(cuid())
+
+  idUsuario        Int?
+  idCuentaAsociada String?
+
+  tipoDocumento   TipoDocumento
+  numeroDocumento String
+
+  razonSocial String?
+  nombres     String?
+  apellidos   String?
+
+  direccion    String?
+  departamento String?
+  provincia    String?
+  distrito     String?
+
+  email  String?
+  estado Boolean @default(true)
+
+  fechaCreacion      DateTime @default(now())
+  fechaActualizacion DateTime @updatedAt
+
+  @@index([idUsuario])
+  @@index([idCuentaAsociada])
+  @@index([numeroDocumento])
+  @@map("datos_facturacion")
+}
+
+model DetalleFactura {
+  id        String @id @default(cuid())
+  idFactura String
+  idCurso   String
+
+  descripcion String
+  cantidad    Int    @default(1)
+
+  precioUnitario Decimal @db.Decimal(10, 2)
+  subtotal       Decimal @db.Decimal(10, 2)
+  impuesto       Decimal @db.Decimal(10, 2)
+  total          Decimal @db.Decimal(10, 2)
+
+  fechaCreacion DateTime @default(now())
+
+  factura Factura @relation(fields: [idFactura], references: [id])
+
+  @@index([idFactura])
+  @@index([idCurso])
+  @@map("detalle_facturas")
+}
+
+model Factura {
+  id String @id @default(cuid())
+
+  serie           String
+  numero          Int
+  tipoComprobante TipoComprobante
+
+  idUsuario        Int?
+  idCuentaAsociada String?
+  idTransaccion    Int  @unique
+
+  tipoDocumento    TipoDocumento
+  numeroDocumento  String
+  nombreCliente    String
+  emailCliente     String?
+  direccionCliente String?
+
+  moneda   Moneda  @default(PEN)
+  subtotal Decimal @db.Decimal(10, 2)
+  impuesto Decimal @db.Decimal(10, 2)
+  total    Decimal @db.Decimal(10, 2)
+
+  metodoPago MetodoPago
+  estadoPago EstadoPago
+
+  urlPdf   String?
+  urlXml   String?
+  codigoQr String?
+
+  datosFacturacionSnapshot Json?
+
+  estado          EstadoFactura @default(EMITIDA)
+  fechaAnulacion  DateTime?
+  motivoAnulacion String?
+
+  fechaEmision       DateTime @default(now())
+  fechaCreacion      DateTime @default(now())
+  fechaActualizacion DateTime @updatedAt
+
+  pago pagos @relation(fields: [idTransaccion], references: [id], onDelete: Restrict)
+
+  detalles DetalleFactura[]
+
+  @@unique([serie, numero])
+  @@index([idUsuario])
+  @@index([idCuentaAsociada])
+  @@index([numeroDocumento])
+  @@index([tipoComprobante])
+  @@index([estadoPago])
+  @@index([estado])
+  @@index([fechaEmision])
+  @@map("facturas")
+}
+
+enum Moneda {
+  PEN
+  COP
+}
+
+enum TipoComprobante {
+  BOLETA
+  FACTURA
+}
+
+enum TipoDocumento {
+  DNI
+  RUC
+  CARNET_EXTRANJERIA
+  PASAPORTE
+}
+
+enum MetodoPago {
+  TARJETA_CREDITO
+  TARJETA_DEBITO
 }
