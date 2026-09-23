@@ -43,15 +43,6 @@ export interface MpOrderResponse {
   };
 }
 
-interface MpOrderRawResponse {
-  errors?: { code: string; message: string; details: string[] }[];
-  data?: MpOrderResponse;  
-}
-
-function montoAString(n: number): string {
-  return Number(n.toFixed(2)).toString();
-}
-
 @Injectable()
 export class MercadoPagoService {
   private readonly baseUrl = 'https://api.mercadopago.com';
@@ -62,36 +53,35 @@ export class MercadoPagoService {
   }
 
   async crearOrdenPago(payload: CrearOrdenMpPayload): Promise<MpOrderResponse> {
+    const bodyPayload = this.construirPayloadPayment(payload);
+
     try {
-      const response = await fetch(`${this.baseUrl}/v1/orders`, {
+      const response = await fetch(`${this.baseUrl}/v1/payments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.accessToken}`,
           'X-Idempotency-Key': uuidv4(),
         },
-        body: JSON.stringify(this.construirPayload(payload)),
+        body: JSON.stringify(bodyPayload),
       });
 
-      const raw = await response.json() as MpOrderRawResponse;
+      const raw = await response.json();
 
       if (!response.ok) {
-        const statusDetail =
-          raw?.data?.transactions?.payments?.[0]?.status_detail ??
-          raw?.data?.status_detail ??
-          'failed';
-
         throw new BadGatewayException({
-          mpStatus: raw?.data?.status ?? 'failed',
-          mpStatusDetail: statusDetail,
+          mpStatus: raw?.status ?? 'failed',
+          mpStatusDetail: raw?.status_detail ?? raw?.message ?? 'failed',
+          mpCause: raw?.cause ?? [],
         });
       }
 
-      return raw.data ?? (raw as unknown as MpOrderResponse);
-
+      return raw;
     } catch (error) {
       if (error instanceof BadGatewayException) throw error;
-      throw new InternalServerErrorException('No se pudo conectar con MercadoPago.');
+      throw new InternalServerErrorException(
+        'No se pudo conectar con MercadoPago.',
+      );
     }
   }
 
@@ -104,43 +94,34 @@ export class MercadoPagoService {
         },
       });
 
+      const raw = await response.json();
+
       if (!response.ok) {
         throw new BadGatewayException(
           `Error consultando orden MP [${response.status}]`,
         );
       }
 
-      return await response.json() as MpOrderResponse;
+      return raw as MpOrderResponse;
     } catch (error) {
       if (error instanceof BadGatewayException) throw error;
-      throw new InternalServerErrorException('Error al consultar el estado del pago.');
+      throw new InternalServerErrorException(
+        'Error al consultar el estado del pago.',
+      );
     }
   }
 
-  private construirPayload(p: CrearOrdenMpPayload): object {
-    const monto = montoAString(p.monto);
-
+  private construirPayloadPayment(p: CrearOrdenMpPayload): object {
     return {
-      type: 'online',
-      processing_mode: p.processing_mode ?? 'automatic',
-      total_amount: monto,
-      external_reference: `orden-interna-${p.idorden}`,
+      transaction_amount: Number(p.monto),
+      token: p.token,
+      description: `Orden de compra #${p.idorden}`,
+      installments: Number(p.cuotas),
+      payment_method_id: p.metodopago,
       payer: {
         email: p.emailpagante,
       },
-      transactions: {
-        payments: [
-          {
-            amount: monto,
-            payment_method: {
-              id: p.metodopago,
-              type: p.tipotarjeta,
-              token: p.token,
-              installments: p.cuotas,
-            },
-          },
-        ],
-      },
+      external_reference: `orden-interna-${p.idorden}`,
     };
   }
 }
