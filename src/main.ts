@@ -10,11 +10,16 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
 
-app.enableCors({
-    origin: 'https://localhost:4200',
+  app.enableCors({
+    origin: [
+      'http://localhost:3001',
+      'https://localhost:58863',
+      'https://localhost:4200',
+      'http://localhost:4200',
+    ],
     credentials: true,
     methods: 'GET,PUT,POST,DELETE,PATCH',
-  }); 
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -31,12 +36,12 @@ app.enableCors({
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
-
+  SwaggerModule.setup('api/swagger', app, document);
 
   await app.listen(envs.port);
 
   logger.log(`api corriendo en el puerto ${envs.port}`);
+  logger.log(`Swagger: http://localhost:${envs.port}/api/swagger`);
   logger.log(`api corriendo en la bd ${envs.databaseUrl}`);
 }
 bootstrap();
