@@ -10,6 +10,7 @@ import { MailerModule } from './core/services/mailer/mailer.module';
 
 import { ConfigModule } from '@nestjs/config';
 import { CursosModule } from './infraestructure/http/cursos/cursos.module';
+import { FacturacionModule } from './infraestructure/http/Facturacion/facturacion.module';
 
 @Module({
   imports: [
@@ -23,7 +24,8 @@ import { CursosModule } from './infraestructure/http/cursos/cursos.module';
     MailerModule,
     PagosModule,
     CarritoModule,
-    CursosModule
+    CursosModule,
+    FacturacionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
