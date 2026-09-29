@@ -28,6 +28,7 @@ app.enableCors({
     .setDescription('API de la aplicacion de universo dicta')
     .setVersion('1.0')
     // .addBearerAuth()
+    .addCookieAuth('accessToken')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

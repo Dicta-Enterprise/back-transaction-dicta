@@ -3,6 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FacturaElectronicaPayload, FactusFacturaResponse, FactusTokenResponse } from  'src/core/entities/Facturacion/factus.interfaces';
@@ -29,7 +30,7 @@ export class FactusService {
     const password     = this.config.getOrThrow<string>('FACTUS_PASSWORD');
     const clientId     = this.config.getOrThrow<string>('FACTUS_CLIENT_ID');
     const clientSecret = this.config.getOrThrow<string>('FACTUS_CLIENT_SECRET');
-   
+
 
     const body = new URLSearchParams({
       grant_type:    'password',
@@ -77,7 +78,7 @@ export class FactusService {
         headers: {
           'Content-Type':  'application/json',
           'Authorization': `Bearer ${token}`,
-          'Accept':        'application/json',
+          'Accept':       'application/json',
         },
         body: JSON.stringify(payload),
       });
@@ -101,6 +102,55 @@ export class FactusService {
     } catch (err) {
       if (err instanceof BadGatewayException) throw err;
       throw new InternalServerErrorException('Error al emitir factura en Factus');
+    }
+  }
+
+  async descargarPdf(numeroFactura: string): Promise<Buffer> {
+    if (!numeroFactura?.trim()) {
+      throw new NotFoundException('La factura no tiene un numero registrado en Factus');
+    }
+
+    const token  = await this.obtenerToken();
+    const numero = encodeURIComponent(numeroFactura.trim());
+
+    try {
+      const response = await fetch(`${this.baseUrl}/v2/bills/${numero}/download-pdf`, {
+        method:  'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept':        'application/json',
+        },
+        redirect: 'error',
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (response.status === 404) {throw new NotFoundException
+        ('El PDF no esta disponible en Factus');}
+
+      if (!response.ok) {throw new BadGatewayException
+        ('Factus no pudo entregar el PDF');
+      }
+
+      const respuesta = await response.json() as {
+        data?: {pdf_base_64_encoded?: unknown;};
+      };
+
+      const contenido = respuesta?.data?.pdf_base_64_encoded;
+
+      if (typeof contenido !== 'string' || !contenido) {
+        throw new BadGatewayException('Factus no devolvio el PDF');
+      }
+
+      const pdf = Buffer.from(contenido, 'base64');
+
+      if (pdf.subarray(0, 5).toString('ascii') !== '%PDF-') {
+        throw new BadGatewayException('El documento recibido no tiene una cabecera PDF valida');
+      }
+
+      return pdf;
+    } catch (err) {
+      if (err instanceof NotFoundException || err instanceof BadGatewayException) throw err;
+      throw new BadGatewayException('No se pudo descargar el PDF desde Factus');
     }
   }
 }
