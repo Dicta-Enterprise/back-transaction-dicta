@@ -3,16 +3,13 @@ import {
   BadRequestException,
   Body,
   Controller,
-  Get,
   HttpException,
   HttpStatus,
   Post,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-
 import { CrearVentaDto } from 'src/application/dto/Order/create-orden.dto';
 import { CrearOrdenYPagarUseCase } from 'src/application/uses-cases/Order/create-order.usecase';
 
@@ -52,19 +49,32 @@ export class OrdersController {
         };
       }
 
+      const resultData = result as unknown as Record<string, unknown>;
+      const subStatusKey =
+        resultData.estadoDetalle ||
+        resultData.mpStatusDetail ||
+        resultData.statusDetail ||
+        'cc_rejected_other_reason';
+
       if (estadoPendiente) {
         throw new HttpException(
           {
-            statusCode: 202,
+            statusCode: HttpStatus.ACCEPTED,
             data: result,
-            message: 'Pago pendiente de confirmación',
+            mpStatus: result.estadoOrden,
+            mpStatusDetail: subStatusKey,
           },
           HttpStatus.ACCEPTED,
         );
       }
 
       throw new HttpException(
-        { statusCode: 402, data: result, message: 'Pago rechazado' },
+        {
+          statusCode: HttpStatus.PAYMENT_REQUIRED,
+          data: result,
+          mpStatus: result.estadoOrden,
+          mpStatusDetail: subStatusKey,
+        },
         HttpStatus.PAYMENT_REQUIRED,
       );
     } catch (error) {
@@ -73,17 +83,21 @@ export class OrdersController {
           mpStatus?: string;
           mpStatusDetail?: string;
         };
+        const detailKey = body.mpStatusDetail ?? 'cc_rejected_other_reason';
+
         throw new HttpException(
           {
-            statusCode: 402,
-            mpStatus: body.mpStatus ?? 'failed',
-            mpStatusDetail: body.mpStatusDetail ?? 'failed',
+            statusCode: HttpStatus.PAYMENT_REQUIRED,
+            mpStatus: body.mpStatus ?? 'rejected',
+            mpStatusDetail: detailKey,
           },
           HttpStatus.PAYMENT_REQUIRED,
         );
       }
 
-      if (error instanceof HttpException) throw error;
+      if (error instanceof HttpException) {
+        throw error;
+      }
 
       if (error instanceof BadRequestException) {
         throw new HttpException(
@@ -101,22 +115,5 @@ export class OrdersController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-  }
-
-  @Get()
-  @ApiOperation({ summary: 'Lista todas las ventas con sus detalles' })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista de ventas obtenida exitosamente',
-  })
-  async findAll() {
-    throw new HttpException(
-      {
-        statusCode: HttpStatus.NOT_IMPLEMENTED,
-        message: 'El endpoint GET /orders aun no esta implementado',
-        error: 'Not Implemented',
-      },
-      HttpStatus.NOT_IMPLEMENTED,
-    );
   }
 }
