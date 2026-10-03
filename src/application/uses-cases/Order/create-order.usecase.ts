@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 
 import { CrearVentaDto } from 'src/application/dto/Order/create-orden.dto';
 import { OrdenService } from 'src/core/services/Order/orden.service';
@@ -45,7 +41,7 @@ export class CrearOrdenYPagarUseCase {
         'Debes aceptar los Términos y Condiciones para realizar la compra.',
       );
     }
-    
+
     const montoEsperado = dto.detalleOrden.reduce(
       (acc, d) => acc.add(new Prisma.Decimal(d.precio)),
       new Prisma.Decimal(0),
@@ -53,7 +49,12 @@ export class CrearOrdenYPagarUseCase {
 
     const montoRecibido = new Prisma.Decimal(dto.pago.monto);
 
-    if (montoRecibido.minus(montoEsperado).abs().greaterThan(new Prisma.Decimal('0.01'))) {
+    if (
+      montoRecibido
+        .minus(montoEsperado)
+        .abs()
+        .greaterThan(new Prisma.Decimal('0.01'))
+    ) {
       throw new BadRequestException(
         `Monto inválido: se recibió ${montoRecibido} pero la suma de detalles es ${montoEsperado}`,
       );
@@ -89,8 +90,8 @@ export class CrearOrdenYPagarUseCase {
     await this.ordenService.actualizarEstado(orden.id, respuestaMp.status);
 
     const primerPago = respuestaMp?.transactions?.payments?.[0];
-    const estadoDetalle = primerPago?.status_detail ?? respuestaMp.status_detail ?? '';
-
+    const estadoDetalle =
+      primerPago?.status_detail ?? respuestaMp.status_detail ?? '';
 
     if (respuestaMp.status === 'processed') {
       const usuario = await this.authApiService.obtenerUsuario(orden.idusuario);
@@ -127,27 +128,25 @@ export class CrearOrdenYPagarUseCase {
     montoPagado: string;
     idusuario: number;
   }): Promise<void> {
-
     const resultados = await Promise.allSettled([
-    this.pagoMailerService.moverACompradores(data.email),
-    this.pagoMailerService.enviarConfirmacion({
-      email: data.email,
-      nombreUsuario: data.nombreUsuario,
-      nrcompra: data.nrcompra,
-      cursos: data.cursos,
-      montoTotal: data.montoPagado,
-      urlPlataforma: this.config.get('FRONTEND_URL', ''),
-    }),
-    this.prisma.carrito.deleteMany({
-      where: { idusuario: data.idusuario },
-    }),
-  ]);
+      this.pagoMailerService.moverACompradores(data.email),
+      this.pagoMailerService.enviarConfirmacion({
+        email: data.email,
+        nombreUsuario: data.nombreUsuario,
+        nrcompra: data.nrcompra,
+        cursos: data.cursos,
+        montoTotal: data.montoPagado,
+        urlPlataforma: this.config.get('FRONTEND_URL', ''),
+      }),
+      this.prisma.carrito.deleteMany({
+        where: { idusuario: data.idusuario },
+      }),
+    ]);
 
-  resultados.forEach((r, i) => {
-    if (r.status === 'rejected') {
-      this.logger.error(`Fallo en acción post-pago [${i}]: ${r.reason}`);
-    }
-  });
-}
-  
+    resultados.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        this.logger.error(`Fallo en acción post-pago [${i}]: ${r.reason}`);
+      }
+    });
+  }
 }

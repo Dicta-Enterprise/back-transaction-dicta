@@ -1,9 +1,9 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CrearVentaDto, EstadoOrden } from 'src/application/dto/Order/create-orden.dto';
+import {
+  CrearVentaDto,
+  EstadoOrden,
+} from 'src/application/dto/Order/create-orden.dto';
 import { detalleorden, orden, Prisma } from 'generated/prisma';
 
 export type OrdenConDetalle = orden & { detalleorden: detalleorden[] };
@@ -72,7 +72,9 @@ export class OrdenService {
       },
     });
 
-    const cursosIds = ordenes.flatMap(o => o.detalleorden.map(d => d.idcurso));
+    const cursosIds = ordenes.flatMap((o) =>
+      o.detalleorden.map((d) => d.idcurso),
+    );
     return [...new Set(cursosIds)];
   }
 
