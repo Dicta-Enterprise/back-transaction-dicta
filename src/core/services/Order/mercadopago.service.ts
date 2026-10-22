@@ -1,22 +1,18 @@
 import {
   BadGatewayException,
   Injectable,
-  InternalServerErrorException,
+  Logger,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { v4 as uuidv4 } from 'uuid';
+import {
+  claveIdempotencia,
+  construirPayloadOrden,
+  CrearOrdenMpPayload,
+  parsearErrorMp,
+} from './mp-orders';
 
-export interface CrearOrdenMpPayload {
-  idorden: number;
-  monto: number;
-  emailpagante: string;
-  metodopago: string;
-  tipotarjeta: string;
-  token: string;
-  cuotas: number;
-  moneda: string;
-  processing_mode?: string;
-}
+export type { CrearOrdenMpPayload } from './mp-orders';
 
 export interface MpOrderResponse {
   id: string;
@@ -43,8 +39,12 @@ export interface MpOrderResponse {
   };
 }
 
+const TIMEOUT_CREAR_MS = 30_000;
+const TIMEOUT_CONSULTAR_MS = 15_000;
+
 @Injectable()
 export class MercadoPagoService {
+  private readonly logger = new Logger(MercadoPagoService.name);
   private readonly baseUrl = 'https://api.mercadopago.com';
   private readonly accessToken: string;
 
@@ -52,76 +52,78 @@ export class MercadoPagoService {
     this.accessToken = this.config.getOrThrow<string>('MP_ACCESS_TOKEN');
   }
 
+  /**
+   * Cobra con la API de Orders (POST /v1/orders). La orden local ya debe existir: su id es la referencia
+   * externa y, junto con la clave de idempotencia, evita que un reintento cobre dos veces.
+   *
+   * Si Mercado Pago rechaza el pago (HTTP 402) lanza BadGatewayException con mpStatus "failed" y el motivo
+   * en mpStatusDetail; si la petición misma falla (credenciales, datos) mpStatus es "error".
+   */
   async crearOrdenPago(payload: CrearOrdenMpPayload): Promise<MpOrderResponse> {
-    const bodyPayload = this.construirPayloadPayment(payload);
+    const cuerpo = construirPayloadOrden(payload);
 
+    let response: Response;
     try {
-      const response = await fetch(`${this.baseUrl}/v1/payments`, {
+      response = await fetch(`${this.baseUrl}/v1/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.accessToken}`,
-          'X-Idempotency-Key': uuidv4(),
+          'X-Idempotency-Key': claveIdempotencia(payload.idorden),
         },
-        body: JSON.stringify(bodyPayload),
+        body: JSON.stringify(cuerpo),
+        signal: AbortSignal.timeout(TIMEOUT_CREAR_MS),
       });
-
-      const raw = await response.json();
-
-      if (!response.ok) {
-        throw new BadGatewayException({
-          mpStatus: raw?.status ?? 'failed',
-          mpStatusDetail: raw?.status_detail ?? raw?.message ?? 'failed',
-          mpCause: raw?.cause ?? [],
-        });
-      }
-
-      return raw;
     } catch (error) {
-      if (error instanceof BadGatewayException) throw error;
-      throw new InternalServerErrorException(
-        'No se pudo conectar con MercadoPago.',
+      this.logger.error(
+        `No se pudo conectar con Mercado Pago (orden ${payload.idorden}): ${(error as Error).message}`,
       );
+      throw new ServiceUnavailableException('No se pudo conectar con MercadoPago.');
     }
+
+    const raw = await this.leerJson(response);
+
+    if (!response.ok) {
+      const error = parsearErrorMp(raw);
+      this.logger.warn(
+        `Mercado Pago respondió ${response.status} (orden ${payload.idorden}): ${error.mpStatus}/${error.mpStatusDetail}`,
+      );
+      throw new BadGatewayException({ ...error, httpStatus: response.status });
+    }
+
+    return raw as MpOrderResponse;
   }
 
   async consultarOrden(ordenMpId: string): Promise<MpOrderResponse> {
+    let response: Response;
     try {
-      const response = await fetch(`${this.baseUrl}/v1/orders/${ordenMpId}`, {
+      response = await fetch(`${this.baseUrl}/v1/orders/${encodeURIComponent(ordenMpId)}`, {
         method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-        },
+        headers: { Authorization: `Bearer ${this.accessToken}` },
+        signal: AbortSignal.timeout(TIMEOUT_CONSULTAR_MS),
       });
-
-      const raw = await response.json();
-
-      if (!response.ok) {
-        throw new BadGatewayException(
-          `Error consultando orden MP [${response.status}]`,
-        );
-      }
-
-      return raw as MpOrderResponse;
     } catch (error) {
-      if (error instanceof BadGatewayException) throw error;
-      throw new InternalServerErrorException(
-        'Error al consultar el estado del pago.',
+      this.logger.error(`No se pudo consultar la orden ${ordenMpId}: ${(error as Error).message}`);
+      throw new ServiceUnavailableException('No se pudo consultar el estado del pago.');
+    }
+
+    const raw = await this.leerJson(response);
+
+    if (!response.ok) {
+      const error = parsearErrorMp(raw);
+      throw new BadGatewayException(
+        `Error consultando orden MP [${response.status}] ${error.mpStatusDetail}`,
       );
     }
+
+    return raw as MpOrderResponse;
   }
 
-  private construirPayloadPayment(p: CrearOrdenMpPayload): object {
-    return {
-      transaction_amount: Number(p.monto),
-      token: p.token,
-      description: `Orden de compra #${p.idorden}`,
-      installments: Number(p.cuotas),
-      payment_method_id: p.metodopago,
-      payer: {
-        email: p.emailpagante,
-      },
-      external_reference: `orden-interna-${p.idorden}`,
-    };
+  private async leerJson(response: Response): Promise<unknown> {
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
   }
 }

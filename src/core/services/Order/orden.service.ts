@@ -5,6 +5,7 @@ import {
   EstadoOrden,
 } from 'src/application/dto/Order/create-orden.dto';
 import { detalleorden, orden, Prisma } from 'generated/prisma';
+import { mapearEstadoMp } from './estado-mp';
 
 export type OrdenConDetalle = orden & { detalleorden: detalleorden[] };
 
@@ -93,13 +94,6 @@ export class OrdenService {
   }
 
   private mapearEstadoMp(estadoMp: string): string {
-    const mapa: Record<string, string> = {
-      processed: EstadoOrden.COMPLETADO,
-      action_required: EstadoOrden.PENDIENTE,
-      pending: EstadoOrden.PENDIENTE,
-      cancelled: EstadoOrden.CANCELADO,
-      failed: EstadoOrden.FALLIDO,
-    };
-    return mapa[estadoMp] ?? EstadoOrden.PENDIENTE;
+    return mapearEstadoMp(estadoMp);
   }
 }

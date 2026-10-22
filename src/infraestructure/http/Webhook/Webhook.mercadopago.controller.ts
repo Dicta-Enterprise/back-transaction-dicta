@@ -10,11 +10,12 @@ import {
 } from '@nestjs/common';
 import { ApiExcludeEndpoint } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import * as crypto from 'crypto';
 import { PagosService }   from 'src/core/services/Order/pagos.service';
 import { OrdenService }   from 'src/core/services/Order/orden.service';
 import { MercadoPagoService } from 'src/core/services/Order/mercadopago.service';
 import { EmitirFacturaElectronicaUseCase } from 'src/application/uses-cases/Facturacion/emitir-factura-electronica.usecase';
+import { esPagoAprobado } from 'src/core/services/Order/estado-mp';
+import { verificarFirmaMp } from 'src/core/services/Order/firma-webhook';
 
 interface MpWebhookPayload {
   id:           string;
@@ -26,8 +27,6 @@ interface MpWebhookPayload {
     id: string;
   };
 }
-
-const ESTADOS_APROBADOS = new Set(['processed']);
 
 @Controller('webhooks')
 export class WebhookMercadoPagoController {
@@ -57,10 +56,17 @@ export class WebhookMercadoPagoController {
       `Webhook MP | Acción: ${payload?.action} | OrdenMP: ${payload?.data?.id} | ReqId: ${xRequestId}`,
     );
 
-    if (payload?.live_mode !== false) {
-      this.verificarFirma(xSignature, xRequestId, payload?.data?.id);
-    } else {
-      this.logger.warn('Modo test detectado (live_mode: false) — verificación de firma omitida');
+    // La firma se exige siempre (también en pruebas): Mercado Pago firma sus notificaciones con el secreto del webhook.
+    const firmaValida = verificarFirmaMp({
+      xSignature,
+      xRequestId,
+      dataId: payload?.data?.id,
+      secret: this.secret,
+    });
+
+    if (!firmaValida) {
+      this.logger.warn(`Webhook rechazado por firma ausente o inválida | ReqId: ${xRequestId}`);
+      throw new UnauthorizedException('Firma de webhook ausente o inválida');
     }
 
     const acciones = ['order.updated', 'order.processed', 'order.canceled', 'order.expired'];
@@ -106,7 +112,7 @@ export class WebhookMercadoPagoController {
       `Sincronizado OK | PagoBD=${pago.id} | Orden=${pago.idorden} | Estado=${ordenMp.status}`,
     );
 
-    if (ESTADOS_APROBADOS.has(ordenMp.status)) {
+    if (esPagoAprobado(ordenMp.status)) {
       await this.emitirFacturaSiNoExiste(pago.idorden);
     }
   }
@@ -145,42 +151,6 @@ export class WebhookMercadoPagoController {
       );
     } catch (err) {
       this.logger.error(`Error emitiendo factura para Orden=${idOrden}:`, err);
-    }
-  }
-
-
-  private verificarFirma(xSignature: string, xRequestId: string, dataId: string): void {
-    if (!xSignature) {
-      this.logger.warn('Webhook sin x-signature — omitiendo verificación (modo test)');
-      return;
-    }
-
-    const parts = Object.fromEntries(
-      xSignature.split(',').map((p) => {
-        const i = p.indexOf('=');
-        return [p.slice(0, i).trim(), p.slice(i + 1).trim()];
-      }),
-    ) as { ts?: string; v1?: string };
-
-    if (!parts.ts || !parts.v1) {
-      throw new UnauthorizedException('Formato de x-signature inválido');
-    }
-
-    const manifest     = `id:${dataId};request-id:${xRequestId};ts:${parts.ts};`;
-    const hashEsperado = crypto.createHmac('sha256', this.secret).update(manifest).digest('hex');
-
-    let valida = false;
-    try {
-      const a = Buffer.from(parts.v1,     'hex');
-      const b = Buffer.from(hashEsperado, 'hex');
-      valida  = a.length === b.length && crypto.timingSafeEqual(a, b);
-    } catch {
-      valida = false;
-    }
-
-    if (!valida) {
-      this.logger.warn(`Firma rechazada | recibido=${parts.v1} | esperado=${hashEsperado}`);
-      throw new UnauthorizedException('Firma HMAC inválida');
     }
   }
 }
