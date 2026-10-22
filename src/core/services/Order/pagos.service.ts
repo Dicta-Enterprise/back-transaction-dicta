@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { pagos, Prisma } from 'generated/prisma';
 import { PagoDto } from 'src/application/dto/Order/Pago.dto';
 import { MpOrderResponse } from './mercadopago.service';
+import { mapearEstadoMp } from './estado-mp';
 
 @Injectable()
 export class PagosService {
@@ -96,19 +97,7 @@ export class PagosService {
   }
 
   private mapearEstado(estadoMp: string): string {
-    const mapa: Record<string, string> = {
-      approved: 'COMPLETADO',
-      processed: 'COMPLETADO',
-      in_process: 'PENDIENTE',
-      pending: 'PENDIENTE',
-      action_required: 'PENDIENTE',
-      rejected: 'FALLIDO',
-      failed: 'FALLIDO',
-      cancelled: 'CANCELADO',
-      refunded: 'DEVUELTO',
-      charged_back: 'CONTRACARGO',
-    };
-    return mapa[estadoMp] ?? 'PENDIENTE';
+    return mapearEstadoMp(estadoMp);
   }
 
   private readonly documentoCache = new Map<number, string>();
