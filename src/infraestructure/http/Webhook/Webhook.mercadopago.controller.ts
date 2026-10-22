@@ -13,7 +13,7 @@ import { ConfigService } from '@nestjs/config';
 import { PagosService }   from 'src/core/services/Order/pagos.service';
 import { OrdenService }   from 'src/core/services/Order/orden.service';
 import { MercadoPagoService } from 'src/core/services/Order/mercadopago.service';
-import { EmitirFacturaElectronicaUseCase } from 'src/application/uses-cases/Facturacion/emitir-factura-electronica.usecase';
+import { FacturacionService } from 'src/core/services/Facturacion/facturacion.service';
 import { esPagoAprobado } from 'src/core/services/Order/estado-mp';
 import { verificarFirmaMp } from 'src/core/services/Order/firma-webhook';
 
@@ -38,7 +38,7 @@ export class WebhookMercadoPagoController {
     private readonly ordenService:       OrdenService,
     private readonly mercadoPagoService: MercadoPagoService,
     private readonly config:             ConfigService,
-    private readonly emitirFacturaUseCase: EmitirFacturaElectronicaUseCase,
+    private readonly facturacionService: FacturacionService,
   ) {
     this.secret = this.config.getOrThrow<string>('MP_webhook_TOKEN');
   }
@@ -113,44 +113,12 @@ export class WebhookMercadoPagoController {
     );
 
     if (esPagoAprobado(ordenMp.status)) {
-      await this.emitirFacturaSiNoExiste(pago.idorden);
-    }
-  }
-
-
-  private async emitirFacturaSiNoExiste(idOrden: number): Promise<void> {
-    const [orden, pago] = await Promise.all([
-      this.ordenService.obtenerOrdenPorId(idOrden),
-      this.pagosService.obtenerPagoPorOrden(idOrden),
-    ]);
-
-    if (!orden || !pago) {
-      this.logger.warn(`No se encontraron datos para facturar Orden=${idOrden}`);
-      return;
-    }
-
-  
-
-    const documentoPagante = this.pagosService.obtenerDocumentoTemporal(pago.idorden);
-
-    try {
-      const respuesta = await this.emitirFacturaUseCase.ejecutar({
-        orden,
-        pago,
-        documento_pagante: documentoPagante,
-      });
-
-      await this.pagosService.guardarDatosFactura(pago.idorden, {
-        cufe:            respuesta.data.bill.cufe,
-        numero_factura:  respuesta.data.bill.number,
-        factura_url:     respuesta.data.bill.public_url,
-      });
-
-      this.logger.log(
-        `Factura electrónica | Orden=${idOrden} | #${respuesta.data.bill.number} | CUFE=${respuesta.data.bill.cufe}`,
-      );
-    } catch (err) {
-      this.logger.error(`Error emitiendo factura para Orden=${idOrden}:`, err);
+      try {
+        const resultado = await this.facturacionService.emitirSiNoExiste(pago.idorden);
+        this.logger.log(`Facturación de la orden ${pago.idorden}: ${resultado}`);
+      } catch (err) {
+        this.logger.error(`Error emitiendo factura para Orden=${pago.idorden}:`, err);
+      }
     }
   }
 }

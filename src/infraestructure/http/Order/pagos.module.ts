@@ -16,6 +16,7 @@ import { OrdersController } from './order.controller';
 import { WebhookMercadoPagoController }  from '../Webhook/Webhook.mercadopago.controller';
 import { AuthApiService } from 'src/core/services/auth/auth-api.service';
 import { CursoApiService } from 'src/core/services/curso/curso-api.service';
+import { FacturacionService } from 'src/core/services/Facturacion/facturacion.service';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { CursoApiService } from 'src/core/services/curso/curso-api.service';
     FactusService,
     AuthApiService,
     CursoApiService,
+    FacturacionService,
     CrearOrdenYPagarUseCase,
     EmitirFacturaElectronicaUseCase,
   ],

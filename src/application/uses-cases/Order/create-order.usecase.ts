@@ -17,6 +17,7 @@ import { PagoMailerService } from 'src/core/services/Order/pago-mailer.service';
 import { PrismaService } from 'src/core/services/prisma/prisma.service';
 import { AuthApiService } from 'src/core/services/auth/auth-api.service';
 import { CursoApiService } from 'src/core/services/curso/curso-api.service';
+import { FacturacionService } from 'src/core/services/Facturacion/facturacion.service';
 import { esPagoAprobado } from 'src/core/services/Order/estado-mp';
 import {
   calcularDetalleReal,
@@ -51,6 +52,7 @@ export class CrearOrdenYPagarUseCase {
     private readonly prisma: PrismaService,
     private readonly authApiService: AuthApiService,
     private readonly cursoApiService: CursoApiService,
+    private readonly facturacionService: FacturacionService,
   ) {}
 
   /**
@@ -127,6 +129,12 @@ export class CrearOrdenYPagarUseCase {
       primerPago?.paid_amount ?? primerPago?.amount ?? String(total);
 
     if (esPagoAprobado(respuestaMp.status)) {
+      // La factura no depende solo del webhook: se intenta aquí y, si el webhook llega después, no se duplica.
+      // Un fallo de facturación no debe tumbar una compra ya cobrada.
+      this.facturacionService.emitirSiNoExiste(orden.id).catch((e) => {
+        this.logger.error(`No se pudo facturar la orden ${orden.id}: ${e}`);
+      });
+
       const usuario = await this.authApiService.obtenerUsuario(orden.idusuario);
 
       if (usuario?.email) {

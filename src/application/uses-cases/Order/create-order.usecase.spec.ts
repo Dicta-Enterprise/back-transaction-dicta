@@ -55,6 +55,7 @@ function crear(opciones: { mp?: jest.Mock; curso?: jest.Mock } = {}) {
   const config = { get: jest.fn().mockReturnValue('https://front.test') };
   const prisma = { carrito: { deleteMany: jest.fn().mockResolvedValue({}) } };
   const auth = { obtenerUsuario: jest.fn().mockResolvedValue({ email: 'ana@correo.co', username: 'ana' }) };
+  const facturacion = { emitirSiNoExiste: jest.fn().mockResolvedValue('emitida') };
   const curso = {
     obtenerCurso:
       opciones.curso ??
@@ -73,9 +74,10 @@ function crear(opciones: { mp?: jest.Mock; curso?: jest.Mock } = {}) {
     prisma as never,
     auth as never,
     curso as never,
+    facturacion as never,
   );
 
-  return { useCase, ordenService, mercadoPagoService, pagosService, mailer, prisma, auth, curso, llamadas };
+  return { useCase, ordenService, mercadoPagoService, pagosService, mailer, prisma, auth, curso, facturacion, llamadas };
 }
 
 describe('CrearOrdenYPagarUseCase', () => {
@@ -147,6 +149,28 @@ describe('CrearOrdenYPagarUseCase', () => {
     expect(mailer.enviarConfirmacion).toHaveBeenCalledWith(expect.objectContaining({ cursos: ['Cyberbullying - Niños'], montoTotal: '50000' }));
     expect(mailer.moverACompradores).toHaveBeenCalledWith('ana@correo.co');
     expect(prisma.carrito.deleteMany).toHaveBeenCalledWith({ where: { idusuario: 7 } });
+  });
+
+  it('pago aprobado: intenta facturar la orden sin esperar al webhook', async () => {
+    const { useCase, facturacion } = crear();
+    await useCase.ejecutar(dtoBase());
+    expect(facturacion.emitirSiNoExiste).toHaveBeenCalledWith(123);
+  });
+
+  it('un fallo al facturar no tumba una compra ya cobrada', async () => {
+    const { useCase, facturacion } = crear();
+    facturacion.emitirSiNoExiste.mockRejectedValue(new Error('Factus caído'));
+    await expect(useCase.ejecutar(dtoBase())).resolves.toMatchObject({ estadoOrden: 'processed' });
+  });
+
+  it('pago pendiente o rechazado: no se factura', async () => {
+    const pendiente = crear({ mp: jest.fn().mockResolvedValue(respuestaMp('processing', 'in_process')) });
+    await pendiente.useCase.ejecutar(dtoBase());
+    expect(pendiente.facturacion.emitirSiNoExiste).not.toHaveBeenCalled();
+
+    const rechazado = crear({ mp: jest.fn().mockRejectedValue(new BadGatewayException({ mpStatus: 'failed' })) });
+    await expect(rechazado.useCase.ejecutar(dtoBase())).rejects.toBeInstanceOf(BadGatewayException);
+    expect(rechazado.facturacion.emitirSiNoExiste).not.toHaveBeenCalled();
   });
 
   it('pago pendiente: se registra pero no se envía confirmación todavía', async () => {

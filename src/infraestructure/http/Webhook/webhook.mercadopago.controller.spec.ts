@@ -31,7 +31,7 @@ function crear() {
     guardarDatosFactura: jest.fn(),
   };
   const ordenes = { actualizarEstado: jest.fn().mockResolvedValue({}), obtenerOrdenPorId: jest.fn() };
-  const factura = { ejecutar: jest.fn() };
+  const facturacion = { emitirSiNoExiste: jest.fn().mockResolvedValue('emitida') };
   const config = { getOrThrow: jest.fn().mockReturnValue(SECRET) };
 
   const controller = new WebhookMercadoPagoController(
@@ -39,9 +39,9 @@ function crear() {
     ordenes as never,
     mercadoPago as never,
     config as never,
-    factura as never,
+    facturacion as never,
   );
-  return { controller, mercadoPago, pagos, ordenes, factura };
+  return { controller, mercadoPago, pagos, ordenes, facturacion };
 }
 
 describe('WebhookMercadoPagoController', () => {
@@ -67,6 +67,22 @@ describe('WebhookMercadoPagoController', () => {
     expect(mercadoPago.consultarOrden).toHaveBeenCalledWith(DATA_ID);
     expect(pagos.actualizarEstadoPorTransactionId).toHaveBeenCalledWith(DATA_ID, 'processing');
     expect(ordenes.actualizarEstado).toHaveBeenCalledWith(77, 'processing');
+  });
+
+  it('cuando Mercado Pago confirma el pago, factura la orden (sin duplicar: lo decide el servicio de facturación)', async () => {
+    const { controller, mercadoPago, facturacion } = crear();
+    mercadoPago.consultarOrden.mockResolvedValue({ id: DATA_ID, status: 'processed', status_detail: 'accredited' });
+    await controller.recibirEvento(evento() as never, firma(), REQ_ID);
+    await new Promise((ok) => setImmediate(ok));
+    await new Promise((ok) => setImmediate(ok));
+    expect(facturacion.emitirSiNoExiste).toHaveBeenCalledWith(77);
+  });
+
+  it('si el pago sigue pendiente no factura', async () => {
+    const { controller, facturacion } = crear();
+    await controller.recibirEvento(evento() as never, firma(), REQ_ID);
+    await new Promise((ok) => setImmediate(ok));
+    expect(facturacion.emitirSiNoExiste).not.toHaveBeenCalled();
   });
 
   it('con firma válida pero un evento que no interesa, lo ignora', async () => {
