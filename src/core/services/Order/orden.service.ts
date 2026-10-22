@@ -79,6 +79,40 @@ export class OrdenService {
     return [...new Set(cursosIds)];
   }
 
+  /** Órdenes PENDIENTES que ya tienen un pago asociado (con el id de Mercado Pago) para revisarlas con Mercado Pago. */
+  async obtenerPendientesConPago(
+    desde: Date,
+    hasta: Date,
+    limite: number,
+  ): Promise<{ idorden: number; transactionid: string }[]> {
+    const ordenes = await this.prisma.orden.findMany({
+      where: {
+        estado: EstadoOrden.PENDIENTE,
+        fechacreacion: { gte: desde, lte: hasta },
+        pagos: { is: { transactionid: { not: null } } },
+      },
+      include: { pagos: true },
+      orderBy: { fechacreacion: 'asc' },
+      take: limite,
+    });
+
+    return ordenes.map((o) => ({
+      idorden: o.id,
+      transactionid: o.pagos?.transactionid as string,
+    }));
+  }
+
+  /** Órdenes PENDIENTES sin ningún pago asociado: no se sabe si Mercado Pago llegó a cobrarlas. */
+  async contarPendientesSinPago(desde: Date, hasta: Date): Promise<number> {
+    return this.prisma.orden.count({
+      where: {
+        estado: EstadoOrden.PENDIENTE,
+        fechacreacion: { gte: desde, lte: hasta },
+        pagos: { is: null },
+      },
+    });
+  }
+
   async actualizarEstado(idOrden: number, estadoMp: string): Promise<orden> {
     return this.prisma.orden.update({
       where: { id: idOrden },

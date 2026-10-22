@@ -51,9 +51,7 @@ function crear(opciones: { mp?: jest.Mock; curso?: jest.Mock } = {}) {
     crearPago: registrar('crearPago', { nrcompra: 55 }),
     guardarDocumentoTemporal: jest.fn(),
   };
-  const mailer = { moverACompradores: jest.fn().mockResolvedValue(undefined), enviarConfirmacion: jest.fn().mockResolvedValue(undefined) };
-  const config = { get: jest.fn().mockReturnValue('https://front.test') };
-  const prisma = { carrito: { deleteMany: jest.fn().mockResolvedValue({}) } };
+  const postPago = { ejecutar: jest.fn().mockResolvedValue(undefined) };
   const auth = { obtenerUsuario: jest.fn().mockResolvedValue({ email: 'ana@correo.co', username: 'ana' }) };
   const facturacion = { emitirSiNoExiste: jest.fn().mockResolvedValue('emitida') };
   const curso = {
@@ -69,15 +67,13 @@ function crear(opciones: { mp?: jest.Mock; curso?: jest.Mock } = {}) {
     ordenService as never,
     mercadoPagoService as never,
     pagosService as never,
-    mailer as never,
-    config as never,
-    prisma as never,
+    postPago as never,
     auth as never,
     curso as never,
     facturacion as never,
   );
 
-  return { useCase, ordenService, mercadoPagoService, pagosService, mailer, prisma, auth, curso, facturacion, llamadas };
+  return { useCase, ordenService, mercadoPagoService, pagosService, postPago, auth, curso, facturacion, llamadas };
 }
 
 describe('CrearOrdenYPagarUseCase', () => {
@@ -140,15 +136,15 @@ describe('CrearOrdenYPagarUseCase', () => {
     expect(inexistente.ordenService.crearOrden).not.toHaveBeenCalled();
   });
 
-  it('pago aprobado: orden completada, correo de confirmación y carrito vaciado', async () => {
-    const { useCase, ordenService, mailer, prisma } = crear();
+  it('pago aprobado: orden completada y avisos posteriores al pago (correo, lista de compradores, carrito)', async () => {
+    const { useCase, ordenService, postPago } = crear();
     const r = await useCase.ejecutar(dtoBase());
 
     expect(r).toMatchObject({ ordenId: 123, nrcompra: 55, ordenMpId: 'ORDTST01', pagoMpId: 'PAY01', estadoOrden: 'processed', estadoDetalle: 'accredited' });
     expect(ordenService.actualizarEstado).toHaveBeenCalledWith(123, 'processed');
-    expect(mailer.enviarConfirmacion).toHaveBeenCalledWith(expect.objectContaining({ cursos: ['Cyberbullying - Niños'], montoTotal: '50000' }));
-    expect(mailer.moverACompradores).toHaveBeenCalledWith('ana@correo.co');
-    expect(prisma.carrito.deleteMany).toHaveBeenCalledWith({ where: { idusuario: 7 } });
+    expect(postPago.ejecutar).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'ana@correo.co', cursos: ['Cyberbullying - Niños'], montoPagado: '50000', idusuario: 7, nrcompra: 55 }),
+    );
   });
 
   it('pago aprobado: intenta facturar la orden sin esperar al webhook', async () => {
@@ -163,31 +159,23 @@ describe('CrearOrdenYPagarUseCase', () => {
     await expect(useCase.ejecutar(dtoBase())).resolves.toMatchObject({ estadoOrden: 'processed' });
   });
 
-  it('pago pendiente o rechazado: no se factura', async () => {
-    const pendiente = crear({ mp: jest.fn().mockResolvedValue(respuestaMp('processing', 'in_process')) });
-    await pendiente.useCase.ejecutar(dtoBase());
-    expect(pendiente.facturacion.emitirSiNoExiste).not.toHaveBeenCalled();
-
-    const rechazado = crear({ mp: jest.fn().mockRejectedValue(new BadGatewayException({ mpStatus: 'failed' })) });
-    await expect(rechazado.useCase.ejecutar(dtoBase())).rejects.toBeInstanceOf(BadGatewayException);
-    expect(rechazado.facturacion.emitirSiNoExiste).not.toHaveBeenCalled();
-  });
-
-  it('pago pendiente: se registra pero no se envía confirmación todavía', async () => {
-    const { useCase, mailer } = crear({ mp: jest.fn().mockResolvedValue(respuestaMp('processing', 'in_process')) });
+  it('pago pendiente: se registra pero no se avisa ni se factura todavía', async () => {
+    const { useCase, postPago, facturacion } = crear({ mp: jest.fn().mockResolvedValue(respuestaMp('processing', 'in_process')) });
     const r = await useCase.ejecutar(dtoBase());
     expect(r.estadoOrden).toBe('processing');
-    expect(mailer.enviarConfirmacion).not.toHaveBeenCalled();
+    expect(postPago.ejecutar).not.toHaveBeenCalled();
+    expect(facturacion.emitirSiNoExiste).not.toHaveBeenCalled();
   });
 
   it('pago rechazado: la orden queda FALLIDA, no se registra pago y el error llega al controlador', async () => {
     const rechazo = new BadGatewayException({ mpStatus: 'failed', mpStatusDetail: 'rejected_by_issuer' });
-    const { useCase, ordenService, pagosService, mailer } = crear({ mp: jest.fn().mockRejectedValue(rechazo) });
+    const { useCase, ordenService, pagosService, postPago, facturacion } = crear({ mp: jest.fn().mockRejectedValue(rechazo) });
 
     await expect(useCase.ejecutar(dtoBase())).rejects.toBe(rechazo);
     expect(ordenService.actualizarEstado).toHaveBeenCalledWith(123, 'failed');
     expect(pagosService.crearPago).not.toHaveBeenCalled();
-    expect(mailer.enviarConfirmacion).not.toHaveBeenCalled();
+    expect(postPago.ejecutar).not.toHaveBeenCalled();
+    expect(facturacion.emitirSiNoExiste).not.toHaveBeenCalled();
   });
 
   it('si no se pudo conectar con Mercado Pago, la orden queda PENDIENTE porque no se sabe si cobró', async () => {

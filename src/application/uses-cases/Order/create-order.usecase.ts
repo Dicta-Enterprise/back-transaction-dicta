@@ -12,9 +12,7 @@ import {
   MpOrderResponse,
 } from 'src/core/services/Order/mercadopago.service';
 import { PagosService } from 'src/core/services/Order/pagos.service';
-import { ConfigService } from '@nestjs/config';
-import { PagoMailerService } from 'src/core/services/Order/pago-mailer.service';
-import { PrismaService } from 'src/core/services/prisma/prisma.service';
+import { PostPagoService } from 'src/core/services/Order/post-pago.service';
 import { AuthApiService } from 'src/core/services/auth/auth-api.service';
 import { CursoApiService } from 'src/core/services/curso/curso-api.service';
 import { FacturacionService } from 'src/core/services/Facturacion/facturacion.service';
@@ -47,9 +45,7 @@ export class CrearOrdenYPagarUseCase {
     private readonly ordenService: OrdenService,
     private readonly mercadoPagoService: MercadoPagoService,
     private readonly pagosService: PagosService,
-    private readonly pagoMailerService: PagoMailerService,
-    private readonly config: ConfigService,
-    private readonly prisma: PrismaService,
+    private readonly postPagoService: PostPagoService,
     private readonly authApiService: AuthApiService,
     private readonly cursoApiService: CursoApiService,
     private readonly facturacionService: FacturacionService,
@@ -138,7 +134,7 @@ export class CrearOrdenYPagarUseCase {
       const usuario = await this.authApiService.obtenerUsuario(orden.idusuario);
 
       if (usuario?.email) {
-        await this.onPagoExitoso({
+        await this.postPagoService.ejecutar({
           email: usuario.email,
           nombreUsuario: usuario.username ?? dto.pago.nombrepagante,
           nrcompra: pagoRegistrado?.nrcompra ?? orden.id,
@@ -204,35 +200,5 @@ export class CrearOrdenYPagarUseCase {
     } catch (e) {
       this.logger.error(`No se pudo actualizar la orden ${idorden}: ${e}`);
     }
-  }
-
-  private async onPagoExitoso(data: {
-    email: string;
-    nombreUsuario: string;
-    nrcompra: number;
-    cursos: string[];
-    montoPagado: string;
-    idusuario: number;
-  }): Promise<void> {
-    const resultados = await Promise.allSettled([
-      this.pagoMailerService.moverACompradores(data.email),
-      this.pagoMailerService.enviarConfirmacion({
-        email: data.email,
-        nombreUsuario: data.nombreUsuario,
-        nrcompra: data.nrcompra,
-        cursos: data.cursos,
-        montoTotal: data.montoPagado,
-        urlPlataforma: this.config.get('FRONTEND_URL', ''),
-      }),
-      this.prisma.carrito.deleteMany({
-        where: { idusuario: data.idusuario },
-      }),
-    ]);
-
-    resultados.forEach((r, i) => {
-      if (r.status === 'rejected') {
-        this.logger.error(`Fallo en acción post-pago [${i}]: ${r.reason}`);
-      }
-    });
   }
 }

@@ -19,76 +19,52 @@ const evento = (extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-function crear() {
-  const mercadoPago = {
-    consultarOrden: jest.fn().mockResolvedValue({ id: DATA_ID, status: 'processing', status_detail: 'in_process' }),
-  };
-  const pagos = {
-    obtenerPagoPorTransactionId: jest.fn().mockResolvedValue({ id: 5, idorden: 77 }),
-    actualizarEstadoPorTransactionId: jest.fn().mockResolvedValue({}),
-    obtenerPagoPorOrden: jest.fn(),
-    obtenerDocumentoTemporal: jest.fn(),
-    guardarDatosFactura: jest.fn(),
-  };
-  const ordenes = { actualizarEstado: jest.fn().mockResolvedValue({}), obtenerOrdenPorId: jest.fn() };
-  const facturacion = { emitirSiNoExiste: jest.fn().mockResolvedValue('emitida') };
+function crear(sincronizar: jest.Mock = jest.fn().mockResolvedValue('actualizada')) {
+  const sincronizacion = { sincronizar };
   const config = { getOrThrow: jest.fn().mockReturnValue(SECRET) };
-
-  const controller = new WebhookMercadoPagoController(
-    pagos as never,
-    ordenes as never,
-    mercadoPago as never,
-    config as never,
-    facturacion as never,
-  );
-  return { controller, mercadoPago, pagos, ordenes, facturacion };
+  const controller = new WebhookMercadoPagoController(config as never, sincronizacion as never);
+  return { controller, sincronizar };
 }
 
 describe('WebhookMercadoPagoController', () => {
   it('rechaza un evento SIN firma, aunque diga live_mode false (antes se dejaba pasar)', async () => {
-    const { controller, mercadoPago } = crear();
+    const { controller, sincronizar } = crear();
     await expect(controller.recibirEvento(evento() as never, undefined as never, REQ_ID)).rejects.toBeInstanceOf(UnauthorizedException);
-    expect(mercadoPago.consultarOrden).not.toHaveBeenCalled();
+    expect(sincronizar).not.toHaveBeenCalled();
   });
 
   it('rechaza un evento con firma falsa', async () => {
-    const { controller, mercadoPago } = crear();
+    const { controller, sincronizar } = crear();
     await expect(controller.recibirEvento(evento() as never, firma('1792646699', 'otro-secreto'), REQ_ID)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
-    expect(mercadoPago.consultarOrden).not.toHaveBeenCalled();
+    expect(sincronizar).not.toHaveBeenCalled();
   });
 
-  it('con firma válida sincroniza el estado desde Mercado Pago y responde received', async () => {
-    const { controller, mercadoPago, ordenes, pagos } = crear();
+  it('con firma válida responde received y sincroniza la orden en segundo plano', async () => {
+    const { controller, sincronizar } = crear();
     const r = await controller.recibirEvento(evento() as never, firma(), REQ_ID);
     expect(r).toEqual({ received: true });
-    await new Promise((ok) => setImmediate(ok)); // la sincronización corre en segundo plano
-    expect(mercadoPago.consultarOrden).toHaveBeenCalledWith(DATA_ID);
-    expect(pagos.actualizarEstadoPorTransactionId).toHaveBeenCalledWith(DATA_ID, 'processing');
-    expect(ordenes.actualizarEstado).toHaveBeenCalledWith(77, 'processing');
+    expect(sincronizar).toHaveBeenCalledWith(DATA_ID);
   });
 
-  it('cuando Mercado Pago confirma el pago, factura la orden (sin duplicar: lo decide el servicio de facturación)', async () => {
-    const { controller, mercadoPago, facturacion } = crear();
-    mercadoPago.consultarOrden.mockResolvedValue({ id: DATA_ID, status: 'processed', status_detail: 'accredited' });
-    await controller.recibirEvento(evento() as never, firma(), REQ_ID);
-    await new Promise((ok) => setImmediate(ok));
-    await new Promise((ok) => setImmediate(ok));
-    expect(facturacion.emitirSiNoExiste).toHaveBeenCalledWith(77);
-  });
-
-  it('si el pago sigue pendiente no factura', async () => {
-    const { controller, facturacion } = crear();
-    await controller.recibirEvento(evento() as never, firma(), REQ_ID);
-    await new Promise((ok) => setImmediate(ok));
-    expect(facturacion.emitirSiNoExiste).not.toHaveBeenCalled();
+  it('si la sincronización falla, el webhook igual responde (la conciliación la reintenta)', async () => {
+    const { controller } = crear(jest.fn().mockRejectedValue(new Error('Mercado Pago no responde')));
+    await expect(controller.recibirEvento(evento() as never, firma(), REQ_ID)).resolves.toEqual({ received: true });
   });
 
   it('con firma válida pero un evento que no interesa, lo ignora', async () => {
-    const { controller, mercadoPago } = crear();
+    const { controller, sincronizar } = crear();
     const r = await controller.recibirEvento(evento({ action: 'payment.created' }) as never, firma(), REQ_ID);
     expect(r).toEqual({ received: true });
-    expect(mercadoPago.consultarOrden).not.toHaveBeenCalled();
+    expect(sincronizar).not.toHaveBeenCalled();
+  });
+
+  it('con firma válida pero sin id de orden, no hace nada', async () => {
+    const { controller, sincronizar } = crear();
+    const sinId = evento({ data: {} });
+    // sin data.id la firma no puede corresponder: se rechaza antes de llegar a sincronizar
+    await expect(controller.recibirEvento(sinId as never, firma(), REQ_ID)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(sincronizar).not.toHaveBeenCalled();
   });
 });

@@ -17,6 +17,10 @@ import { WebhookMercadoPagoController }  from '../Webhook/Webhook.mercadopago.co
 import { AuthApiService } from 'src/core/services/auth/auth-api.service';
 import { CursoApiService } from 'src/core/services/curso/curso-api.service';
 import { FacturacionService } from 'src/core/services/Facturacion/facturacion.service';
+import { PostPagoService } from 'src/core/services/Order/post-pago.service';
+import { SincronizacionPagosService } from 'src/core/services/Order/sincronizacion-pagos.service';
+import { ConciliacionPagosService } from 'src/core/services/Order/conciliacion-pagos.service';
+import { ConciliacionPagosScheduler } from './conciliacion-pagos.scheduler';
 
 @Module({
   imports: [
@@ -38,6 +42,10 @@ import { FacturacionService } from 'src/core/services/Facturacion/facturacion.se
     AuthApiService,
     CursoApiService,
     FacturacionService,
+    PostPagoService,
+    SincronizacionPagosService,
+    ConciliacionPagosService,
+    ConciliacionPagosScheduler,
     CrearOrdenYPagarUseCase,
     EmitirFacturaElectronicaUseCase,
   ],
