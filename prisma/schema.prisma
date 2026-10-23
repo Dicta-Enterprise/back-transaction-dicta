@@ -49,6 +49,11 @@ model orden {
   detalleorden  detalleorden[]
   pagos         pagos?
   acepto_terminos Boolean @default(false)
+
+  // Dónde se hizo la compra (se calcula con la IP de quien compra; la IP en sí no se guarda).
+  ubicacion_pais         String? @db.VarChar(100)
+  ubicacion_ciudad       String? @db.VarChar(100)
+  ubicacion_zona_horaria String? @db.VarChar(60)
 }
 
 model pagos {

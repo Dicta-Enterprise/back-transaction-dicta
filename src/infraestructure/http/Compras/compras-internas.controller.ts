@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
 import { ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { InternalApiKeyGuard } from 'src/shared/guard/internal-api-key.guard';
 import { ResumenComprasDto } from 'src/application/dto/Compras/resumen-compras.dto';
@@ -10,6 +10,12 @@ import { ComprasInternasService } from 'src/core/services/Compras/compras-intern
 @Controller('internal/compras')
 export class ComprasInternasController {
   constructor(private readonly comprasService: ComprasInternasService) {}
+
+  @Get('usuario/:idusuario')
+  @ApiOperation({ summary: 'Detalle de las compras de un usuario: fecha, país, ciudad y si fue exitosa o no (uso interno)' })
+  async detalleDeUsuario(@Param('idusuario', ParseIntPipe) idusuario: number) {
+    return this.comprasService.detallePorUsuario(idusuario);
+  }
 
   @Post('resumen')
   @HttpCode(HttpStatus.OK)
