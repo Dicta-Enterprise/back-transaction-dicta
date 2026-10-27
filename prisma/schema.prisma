@@ -50,6 +50,10 @@ model orden {
   pagos         pagos?
   acepto_terminos Boolean @default(false)
 
+  // Columna que ya existe en la base (migración add_ip_orden de la issue #85). Hoy no se usa ni se llena:
+  // se declara aquí para que el esquema coincida con la base y un db push no la borre.
+  ip String? @db.VarChar(45)
+
   // Dónde se hizo la compra (se calcula con la IP de quien compra; la IP en sí no se guarda).
   ubicacion_pais         String? @db.VarChar(100)
   ubicacion_ciudad       String? @db.VarChar(100)
