@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/core/services/prisma/prisma.service';
-import { resumirCompras, ResumenCompraUsuario } from './resumen-compras';
+import { ResumenCompraUsuario, resumirCompras } from './resumen-compras';
 import { armarDetalleCompra, DetalleCompra } from './detalle-compras';
 
 // Tope de seguridad: un usuario no debería tener tantas compras, pero la consulta no debe poder crecer sin límite.
