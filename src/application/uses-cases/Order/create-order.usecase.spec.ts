@@ -32,7 +32,7 @@ const respuestaMp = (status: string, detalle = 'accredited') => ({
   transactions: { payments: [{ id: 'PAY01', amount: '50000', status, status_detail: detalle }] },
 });
 
-function crear(opciones: { mp?: jest.Mock; curso?: jest.Mock } = {}) {
+function crear(opciones: { mp?: jest.Mock; curso?: jest.Mock; geo?: jest.Mock } = {}) {
   const llamadas: string[] = [];
   const registrar = (nombre: string, valor: unknown) =>
     jest.fn().mockImplementation(async (...args: unknown[]) => {
@@ -43,6 +43,7 @@ function crear(opciones: { mp?: jest.Mock; curso?: jest.Mock } = {}) {
   const ordenService = {
     crearOrden: registrar('crearOrden', { id: 123, idusuario: 7 }),
     actualizarEstado: registrar('actualizarEstado', {}),
+    guardarUbicacion: jest.fn().mockResolvedValue(undefined),
   };
   const mercadoPagoService = {
     crearOrdenPago: opciones.mp ?? registrar('crearOrdenPago', respuestaMp('processed')),
@@ -54,6 +55,7 @@ function crear(opciones: { mp?: jest.Mock; curso?: jest.Mock } = {}) {
   const postPago = { ejecutar: jest.fn().mockResolvedValue(undefined) };
   const auth = { obtenerUsuario: jest.fn().mockResolvedValue({ email: 'ana@correo.co', username: 'ana' }) };
   const facturacion = { emitirSiNoExiste: jest.fn().mockResolvedValue('emitida') };
+  const geo = { ubicarIp: opciones.geo ?? jest.fn().mockResolvedValue({ pais: 'Colombia', ciudad: 'Bogotá', zonaHoraria: 'America/Bogota' }) };
   const curso = {
     obtenerCurso:
       opciones.curso ??
@@ -71,9 +73,10 @@ function crear(opciones: { mp?: jest.Mock; curso?: jest.Mock } = {}) {
     auth as never,
     curso as never,
     facturacion as never,
+    geo as never,
   );
 
-  return { useCase, ordenService, mercadoPagoService, pagosService, postPago, auth, curso, facturacion, llamadas };
+  return { useCase, ordenService, mercadoPagoService, pagosService, postPago, auth, curso, facturacion, geo, llamadas };
 }
 
 describe('CrearOrdenYPagarUseCase', () => {
@@ -88,6 +91,27 @@ describe('CrearOrdenYPagarUseCase', () => {
     const pagoGuardado = pagosService.crearPago.mock.calls[0][1] as { monto: number; fechapago: string };
     expect(pagoGuardado.monto).toBe(50000);
     expect(pagoGuardado.fechapago).not.toBe('2020-01-01T00:00:00.000Z');
+  });
+
+  it('guarda el lugar de la compra (país, ciudad y zona horaria) a partir de la IP de la petición', async () => {
+    const { useCase, ordenService, geo } = crear();
+    await useCase.ejecutar(dtoBase(), '181.49.10.20');
+    await new Promise((ok) => setImmediate(ok));
+
+    expect(geo.ubicarIp).toHaveBeenCalledWith('181.49.10.20');
+    expect(ordenService.guardarUbicacion).toHaveBeenCalledWith(123, { pais: 'Colombia', ciudad: 'Bogotá', zonaHoraria: 'America/Bogota' });
+  });
+
+  it('si no se puede ubicar la IP, la compra sigue y no se guarda ubicación', async () => {
+    const { useCase, ordenService } = crear({ geo: jest.fn().mockResolvedValue(null) });
+    await expect(useCase.ejecutar(dtoBase(), '127.0.0.1')).resolves.toMatchObject({ estadoOrden: 'processed' });
+    await new Promise((ok) => setImmediate(ok));
+    expect(ordenService.guardarUbicacion).not.toHaveBeenCalled();
+  });
+
+  it('un fallo al ubicar o al guardar la ubicación no tumba una compra', async () => {
+    const { useCase } = crear({ geo: jest.fn().mockRejectedValue(new Error('back-auth caído')) });
+    await expect(useCase.ejecutar(dtoBase(), '181.49.10.20')).resolves.toMatchObject({ estadoOrden: 'processed' });
   });
 
   it('guarda la orden ANTES de cobrar, para no cobrar sin dejar rastro', async () => {

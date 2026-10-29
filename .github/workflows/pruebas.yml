@@ -1,0 +1,35 @@
+name: Pruebas
+
+# Corre la compilación y las pruebas automáticas en cada pull request y en cada cambio a master,
+# para que un cambio que rompa el cobro (por ejemplo, la validación del precio) no llegue al despliegue.
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    env:
+      HUSKY: 0
+      # prisma generate solo lee el esquema; no se conecta a ninguna base de datos
+      DATABASE_URL: postgresql://usuario:clave@localhost:5432/prueba?schema=transaction
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Generar el cliente de Prisma
+        run: npx prisma generate
+
+      - name: Compilar (tsc, sin demo/)
+        run: npx tsc --noEmit -p tsconfig.build.json
+
+      - name: Pruebas automáticas
+        run: npm test

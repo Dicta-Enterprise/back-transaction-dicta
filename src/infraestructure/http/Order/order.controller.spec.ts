@@ -6,13 +6,19 @@ const resultado = (estadoOrden: string) => ({ ordenId: 1, estadoOrden, estadoDet
 async function intentar(useCase: { ejecutar: jest.Mock }) {
   const controller = new OrdersController(useCase as never);
   try {
-    return { respuesta: await controller.create({} as never) };
+    return { respuesta: await controller.create({} as never, '181.49.10.20') };
   } catch (e) {
     return { error: e as HttpException };
   }
 }
 
 describe('OrdersController', () => {
+  it('le pasa al cobro la IP de la petición, no un dato del cuerpo', async () => {
+    const useCase = { ejecutar: jest.fn().mockResolvedValue(resultado('processed')) };
+    await intentar(useCase);
+    expect(useCase.ejecutar).toHaveBeenCalledWith({}, '181.49.10.20');
+  });
+
   it('pago aprobado responde 201', async () => {
     const { respuesta } = await intentar({ ejecutar: jest.fn().mockResolvedValue(resultado('processed')) });
     expect(respuesta).toMatchObject({ statusCode: 201 });

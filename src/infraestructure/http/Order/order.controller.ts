@@ -12,6 +12,7 @@ import {
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CrearVentaDto } from 'src/application/dto/Order/create-orden.dto';
 import { CrearOrdenYPagarUseCase } from 'src/application/uses-cases/Order/create-order.usecase';
+import { ClientIp } from 'src/shared/decorator/client-ip.decorator';
 
 @ApiTags('Orders')
 @Controller('orders')
@@ -27,9 +28,9 @@ export class OrdersController {
   @ApiResponse({ status: 400, description: 'Datos inválidos.' })
   @ApiResponse({ status: 500, description: 'Error interno del servidor.' })
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async create(@Body() dto: CrearVentaDto) {
+  async create(@Body() dto: CrearVentaDto, @ClientIp() ip: string | null) {
     try {
-      const result = await this.createUseCase.ejecutar(dto);
+      const result = await this.createUseCase.ejecutar(dto, ip);
 
       const estadoExitoso = ['approved', 'processed'].includes(
         result.estadoOrden,

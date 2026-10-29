@@ -18,6 +18,7 @@ import { AuthApiService } from 'src/core/services/auth/auth-api.service';
 import { CursoApiService } from 'src/core/services/curso/curso-api.service';
 import { FacturacionService } from 'src/core/services/Facturacion/facturacion.service';
 import { PostPagoService } from 'src/core/services/Order/post-pago.service';
+import { GeoApiService } from 'src/core/services/Ubicacion/geo-api.service';
 import { SincronizacionPagosService } from 'src/core/services/Order/sincronizacion-pagos.service';
 import { ConciliacionPagosService } from 'src/core/services/Order/conciliacion-pagos.service';
 import { ConciliacionPagosScheduler } from './conciliacion-pagos.scheduler';
@@ -42,6 +43,7 @@ import { ConciliacionPagosScheduler } from './conciliacion-pagos.scheduler';
     AuthApiService,
     CursoApiService,
     FacturacionService,
+    GeoApiService,
     PostPagoService,
     SincronizacionPagosService,
     ConciliacionPagosService,

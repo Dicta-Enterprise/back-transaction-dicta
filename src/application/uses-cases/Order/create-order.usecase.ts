@@ -16,6 +16,7 @@ import { PostPagoService } from 'src/core/services/Order/post-pago.service';
 import { AuthApiService } from 'src/core/services/auth/auth-api.service';
 import { CursoApiService } from 'src/core/services/curso/curso-api.service';
 import { FacturacionService } from 'src/core/services/Facturacion/facturacion.service';
+import { GeoApiService } from 'src/core/services/Ubicacion/geo-api.service';
 import { esPagoAprobado } from 'src/core/services/Order/estado-mp';
 import {
   calcularDetalleReal,
@@ -49,6 +50,7 @@ export class CrearOrdenYPagarUseCase {
     private readonly authApiService: AuthApiService,
     private readonly cursoApiService: CursoApiService,
     private readonly facturacionService: FacturacionService,
+    private readonly geoApiService: GeoApiService,
   ) {}
 
   /**
@@ -58,7 +60,7 @@ export class CrearOrdenYPagarUseCase {
    *  3. Se cobra en Mercado Pago (API de Orders) con una clave de idempotencia basada en esa orden.
    *  4. Se registra el pago y se actualiza el estado.
    */
-  async ejecutar(dto: CrearVentaDto): Promise<PagoResultado> {
+  async ejecutar(dto: CrearVentaDto, ipCliente?: string | null): Promise<PagoResultado> {
     if (!dto.aceptoTerminos) {
       throw new BadRequestException(
         'Debes aceptar los Términos y Condiciones para realizar la compra.',
@@ -77,6 +79,9 @@ export class CrearOrdenYPagarUseCase {
       ...dto,
       detalleOrden: detalle,
     });
+
+    // El lugar de la compra no se espera: se guarda aparte y, si falla, la compra sigue igual.
+    void this.guardarUbicacionCompra(orden.id, ipCliente);
 
     let respuestaMp: MpOrderResponse;
     try {
@@ -185,6 +190,18 @@ export class CrearOrdenYPagarUseCase {
    * Si Mercado Pago contestó con un error, el cobro no se hizo y la orden queda FALLIDA. Si no se pudo ni conectar,
    * no se sabe si se cobró: se deja PENDIENTE para revisarla después.
    */
+  /** País, ciudad y zona horaria de quien compra, a partir de su IP. La IP en sí no se guarda. */
+  private async guardarUbicacionCompra(idorden: number, ip?: string | null): Promise<void> {
+    try {
+      const ubicacion = await this.geoApiService.ubicarIp(ip);
+      if (ubicacion) {
+        await this.ordenService.guardarUbicacion(idorden, ubicacion);
+      }
+    } catch (error) {
+      this.logger.warn(`No se pudo guardar la ubicación de la orden ${idorden}: ${(error as Error).message}`);
+    }
+  }
+
   private async marcarOrdenSinCobro(
     idorden: number,
     error: unknown,

@@ -6,6 +6,7 @@ import {
 } from 'src/application/dto/Order/create-orden.dto';
 import { detalleorden, orden, Prisma } from 'generated/prisma';
 import { mapearEstadoMp } from './estado-mp';
+import { UbicacionCompra } from '../Ubicacion/geo-api.service';
 
 export type OrdenConDetalle = orden & { detalleorden: detalleorden[] };
 
@@ -36,6 +37,17 @@ export class OrdenService {
         where: { id: nuevaOrden.id },
         include: { detalleorden: true },
       });
+    });
+  }
+
+  async guardarUbicacion(idOrden: number, ubicacion: UbicacionCompra): Promise<void> {
+    await this.prisma.orden.update({
+      where: { id: idOrden },
+      data: {
+        ubicacion_pais: ubicacion.pais,
+        ubicacion_ciudad: ubicacion.ciudad,
+        ubicacion_zona_horaria: ubicacion.zonaHoraria,
+      },
     });
   }
 
