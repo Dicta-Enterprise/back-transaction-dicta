@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Demostración de cobro</title>
+<style>
+  :root { --fondo:#f4f6fb; --tarjeta:#fff; --texto:#1b2333; --suave:#6b7488; --borde:#dfe4ee; --azul:#2563eb; --ok:#15803d; --okbg:#e8f6ee; --mal:#b91c1c; --malbg:#fdecec; --info:#475569; --infobg:#eef2f7; }
+  @media (prefers-color-scheme: dark) { :root { --fondo:#0f1420; --tarjeta:#171e2e; --texto:#e8ecf5; --suave:#93a0b8; --borde:#27324a; --azul:#5b8def; --ok:#4ade80; --okbg:#12301f; --mal:#f87171; --malbg:#3a1618; --info:#b6c2d9; --infobg:#1d263a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--fondo); color:var(--texto); font:15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding:20px 24px 4px; }
+  h1 { margin:0; font-size:22px; }
+  header p { margin:4px 0 0; color:var(--suave); }
+  .etiqueta { display:inline-block; font-size:12px; padding:2px 8px; border-radius:99px; background:var(--infobg); color:var(--info); margin-left:8px; vertical-align:middle; }
+  main { display:grid; grid-template-columns: 340px 1fr; gap:20px; padding:16px 24px 32px; max-width:1100px; margin:0 auto; }
+  @media (max-width: 820px) { main { grid-template-columns: 1fr; padding:12px 16px 28px; } header { padding:16px 16px 0; } }
+  .caja { background:var(--tarjeta); border:1px solid var(--borde); border-radius:14px; padding:18px; }
+  .caja h2 { margin:0 0 12px; font-size:16px; }
+  .curso { display:flex; justify-content:space-between; align-items:center; padding:12px; border:1px dashed var(--borde); border-radius:10px; margin-bottom:14px; }
+  .precio { font-weight:700; font-size:18px; }
+  label { display:block; font-size:13px; color:var(--suave); margin:12px 0 4px; }
+  input[type=number], select { width:100%; padding:10px 12px; border:1px solid var(--borde); border-radius:10px; background:var(--fondo); color:var(--texto); font:inherit; }
+  .fila { display:flex; align-items:center; gap:8px; margin-top:12px; font-size:14px; }
+  .atajos { display:flex; gap:8px; margin-top:6px; }
+  .atajos button { flex:1; font-size:12px; padding:6px 8px; border:1px solid var(--borde); background:transparent; color:var(--texto); border-radius:8px; cursor:pointer; }
+  .atajos button:hover { border-color:var(--azul); }
+  #pagar { width:100%; margin-top:18px; padding:12px; border:0; border-radius:10px; background:var(--azul); color:#fff; font:600 15px system-ui; cursor:pointer; }
+  #pagar:disabled { opacity:.6; cursor:wait; }
+  .nota { font-size:12px; color:var(--suave); margin-top:10px; }
+  .paso { display:flex; gap:12px; padding:12px; border-radius:10px; margin-bottom:10px; background:var(--infobg); }
+  .paso.ok { background:var(--okbg); } .paso.error { background:var(--malbg); }
+  .icono { font-size:18px; line-height:1.2; width:22px; text-align:center; }
+  .paso.ok .icono { color:var(--ok); } .paso.error .icono { color:var(--mal); }
+  .paso b { display:block; }
+  .paso span { color:var(--suave); font-size:14px; }
+  .resultado { padding:14px; border-radius:10px; font-weight:700; margin-top:4px; }
+  .resultado.ok { background:var(--okbg); color:var(--ok); } .resultado.error { background:var(--malbg); color:var(--mal); } .resultado.info { background:var(--infobg); color:var(--info); }
+  .vacio { color:var(--suave); text-align:center; padding:28px 8px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--borde); }
+  th { color:var(--suave); font-weight:600; }
+  td.mono { font-family:ui-monospace, Consolas, monospace; font-size:12px; word-break:break-all; }
+  .derecha { display:flex; flex-direction:column; gap:20px; min-width:0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Demostración de cobro con Mercado Pago <span class="etiqueta">SANDBOX · sin dinero real</span></h1>
+  <p>Código real de la rama <code>feature/mercadopago-orders-api</code>. No usa base de datos ni envía correos.</p>
+</header>
+<main>
+  <section class="caja">
+    <h2>Comprar un curso</h2>
+    <div class="curso"><div>Curso de demostración<br /><small style="color:var(--suave)">Precio real en el catálogo</small></div><div class="precio">$10.000 COP</div></div>
+
+    <label for="monto">Monto que manda el navegador (COP)</label>
+    <input id="monto" type="number" min="1" value="10000" />
+    <div class="atajos">
+      <button type="button" data-monto="10000">Precio correcto</button>
+      <button type="button" data-monto="1">Manipular a 1 peso</button>
+    </div>
+
+    <label for="escenario">Resultado de la tarjeta de prueba</label>
+    <select id="escenario">
+      <option value="aprobado">Pago aprobado (titular APRO)</option>
+      <option value="rechazado">Pago rechazado (titular OTHE)</option>
+      <option value="fondos">Fondos insuficientes (titular FUND)</option>
+    </select>
+
+    <div class="fila"><input id="repetir" type="checkbox" /><label for="repetir" style="margin:0;color:var(--texto)">Repetir la misma compra (probar doble cobro)</label></div>
+
+    <button id="pagar" type="button">Pagar</button>
+    <p class="nota">Cada pago crea una orden nueva en el sandbox de Mercado Pago. Puedes verlas en la actividad del vendedor de prueba.</p>
+  </section>
+
+  <div class="derecha">
+    <section class="caja">
+      <h2>Qué pasa paso a paso</h2>
+      <div id="pasos"><div class="vacio">Elige un escenario y pulsa <b>Pagar</b>.</div></div>
+      <div id="resultado"></div>
+    </section>
+    <section class="caja">
+      <h2>Historial de esta sesión</h2>
+      <div id="historial"><div class="vacio">Todavía no hay pagos.</div></div>
+    </section>
+  </div>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const ICONOS = { ok: '✓', error: '✗', info: 'ℹ' };
+
+  document.querySelectorAll('[data-monto]').forEach((b) => b.addEventListener('click', () => { $('monto').value = b.dataset.monto; }));
+
+  function pintarHistorial(lista) {
+    if (!lista.length) { $('historial').innerHTML = '<div class="vacio">Todavía no hay pagos.</div>'; return; }
+    $('historial').innerHTML = '<table><thead><tr><th>Hora</th><th>Escenario</th><th>Monto enviado</th><th>Resultado</th><th>Orden Mercado Pago</th></tr></thead><tbody>' +
+      lista.map((i) => `<tr><td>${esc(i.hora)}</td><td>${esc(i.escenario)}</td><td>${esc(i.montoCliente)}</td><td>${esc(i.resultado)}</td><td class="mono">${esc(i.ordenMp ?? '—')}</td></tr>`).join('') + '</tbody></table>';
+  }
+
+  $('pagar').addEventListener('click', async () => {
+    const boton = $('pagar');
+    boton.disabled = true; boton.textContent = 'Procesando…';
+    $('pasos').innerHTML = '<div class="vacio">Hablando con Mercado Pago…</div>'; $('resultado').innerHTML = '';
+    try {
+      const r = await fetch('/api/pagar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ escenario: $('escenario').value, monto: $('monto').value, repetir: $('repetir').checked }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Error');
+      $('pasos').innerHTML = j.pasos.map((p) => `<div class="paso ${p.estado}"><div class="icono">${ICONOS[p.estado]}</div><div><b>${esc(p.titulo)}</b><span>${esc(p.detalle)}</span></div></div>`).join('');
+      const bueno = j.resultado === 'COMPLETADO';
+      const malo = /rechazad|error/i.test(j.resultado);
+      $('resultado').innerHTML = `<div class="resultado ${bueno ? 'ok' : malo ? 'error' : 'info'}">Resultado: ${esc(j.resultado)}</div>`;
+      pintarHistorial(j.historial);
+    } catch (e) {
+      $('pasos').innerHTML = `<div class="paso error"><div class="icono">✗</div><div><b>No se pudo completar</b><span>${esc(e.message)}</span></div></div>`;
+    } finally {
+      boton.disabled = false; boton.textContent = 'Pagar';
+    }
+  });
+
+  fetch('/api/historial').then((r) => r.json()).then(pintarHistorial).catch(() => {});
+</script>
+</body>
+</html>
