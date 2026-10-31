@@ -10,11 +10,8 @@ import {
 } from '@nestjs/common';
 import { ApiExcludeEndpoint } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import * as crypto from 'crypto';
-import { PagosService }   from 'src/core/services/Order/pagos.service';
-import { OrdenService }   from 'src/core/services/Order/orden.service';
-import { MercadoPagoService } from 'src/core/services/Order/mercadopago.service';
-import { EmitirFacturaElectronicaUseCase } from 'src/application/uses-cases/Facturacion/emitir-factura-electronica.usecase';
+import { verificarFirmaMp } from 'src/core/services/Order/firma-webhook';
+import { SincronizacionPagosService } from 'src/core/services/Order/sincronizacion-pagos.service';
 
 interface MpWebhookPayload {
   id:           string;
@@ -27,7 +24,7 @@ interface MpWebhookPayload {
   };
 }
 
-const ESTADOS_APROBADOS = new Set(['processed']);
+const ACCIONES_QUE_INTERESAN = ['order.updated', 'order.processed', 'order.canceled', 'order.expired'];
 
 @Controller('webhooks')
 export class WebhookMercadoPagoController {
@@ -35,11 +32,8 @@ export class WebhookMercadoPagoController {
   private readonly secret: string;
 
   constructor(
-    private readonly pagosService:       PagosService,
-    private readonly ordenService:       OrdenService,
-    private readonly mercadoPagoService: MercadoPagoService,
-    private readonly config:             ConfigService,
-    private readonly emitirFacturaUseCase: EmitirFacturaElectronicaUseCase,
+    private readonly config: ConfigService,
+    private readonly sincronizacion: SincronizacionPagosService,
   ) {
     this.secret = this.config.getOrThrow<string>('MP_webhook_TOKEN');
   }
@@ -57,14 +51,20 @@ export class WebhookMercadoPagoController {
       `Webhook MP | Acción: ${payload?.action} | OrdenMP: ${payload?.data?.id} | ReqId: ${xRequestId}`,
     );
 
-    if (payload?.live_mode !== false) {
-      this.verificarFirma(xSignature, xRequestId, payload?.data?.id);
-    } else {
-      this.logger.warn('Modo test detectado (live_mode: false) — verificación de firma omitida');
+    // La firma se exige siempre (también en pruebas): Mercado Pago firma sus notificaciones con el secreto del webhook.
+    const firmaValida = verificarFirmaMp({
+      xSignature,
+      xRequestId,
+      dataId: payload?.data?.id,
+      secret: this.secret,
+    });
+
+    if (!firmaValida) {
+      this.logger.warn(`Webhook rechazado por firma ausente o inválida | ReqId: ${xRequestId}`);
+      throw new UnauthorizedException('Firma de webhook ausente o inválida');
     }
 
-    const acciones = ['order.updated', 'order.processed', 'order.canceled', 'order.expired'];
-    if (!acciones.includes(payload?.action)) {
+    if (!ACCIONES_QUE_INTERESAN.includes(payload?.action)) {
       this.logger.log(`Evento ignorado: ${payload?.action}`);
       return { received: true };
     }
@@ -75,112 +75,12 @@ export class WebhookMercadoPagoController {
       return { received: true };
     }
 
-    this.sincronizarEstado(ordenMpId).catch((err) =>
+    // Se responde enseguida (Mercado Pago espera una respuesta rápida) y la sincronización sigue en segundo plano.
+    // Si algo falla, el proceso de conciliación la reintenta más tarde.
+    this.sincronizacion.sincronizar(ordenMpId).catch((err) =>
       this.logger.error(`Error sincronizando orden MP ${ordenMpId}:`, err),
     );
 
     return { received: true };
-  }
-
-
-  private async sincronizarEstado(ordenMpId: string): Promise<void> {
-    const ordenMp = await this.mercadoPagoService.consultarOrden(ordenMpId);
-
-    this.logger.log(
-      `Estado MP → Orden: ${ordenMpId} | Estado: ${ordenMp.status} | Detalle: ${ordenMp.status_detail}`,
-    );
-
-    const pago = await this.pagosService.obtenerPagoPorTransactionId(ordenMpId);
-
-    if (!pago) {
-      this.logger.warn(`Sin pago local para transactionid=${ordenMpId}`);
-      return;
-    }
-
-    await Promise.all([
-      this.pagosService.actualizarEstadoPorTransactionId(ordenMpId, ordenMp.status),
-      this.ordenService.actualizarEstado(pago.idorden, ordenMp.status),
-    ]);
-
-    this.logger.log(
-      `Sincronizado OK | PagoBD=${pago.id} | Orden=${pago.idorden} | Estado=${ordenMp.status}`,
-    );
-
-    if (ESTADOS_APROBADOS.has(ordenMp.status)) {
-      await this.emitirFacturaSiNoExiste(pago.idorden);
-    }
-  }
-
-
-  private async emitirFacturaSiNoExiste(idOrden: number): Promise<void> {
-    const [orden, pago] = await Promise.all([
-      this.ordenService.obtenerOrdenPorId(idOrden),
-      this.pagosService.obtenerPagoPorOrden(idOrden),
-    ]);
-
-    if (!orden || !pago) {
-      this.logger.warn(`No se encontraron datos para facturar Orden=${idOrden}`);
-      return;
-    }
-
-  
-
-    const documentoPagante = this.pagosService.obtenerDocumentoTemporal(pago.idorden);
-
-    try {
-      const respuesta = await this.emitirFacturaUseCase.ejecutar({
-        orden,
-        pago,
-        documento_pagante: documentoPagante,
-      });
-
-      await this.pagosService.guardarDatosFactura(pago.idorden, {
-        cufe:            respuesta.data.bill.cufe,
-        numero_factura:  respuesta.data.bill.number,
-        factura_url:     respuesta.data.bill.public_url,
-      });
-
-      this.logger.log(
-        `Factura electrónica | Orden=${idOrden} | #${respuesta.data.bill.number} | CUFE=${respuesta.data.bill.cufe}`,
-      );
-    } catch (err) {
-      this.logger.error(`Error emitiendo factura para Orden=${idOrden}:`, err);
-    }
-  }
-
-
-  private verificarFirma(xSignature: string, xRequestId: string, dataId: string): void {
-    if (!xSignature) {
-      this.logger.warn('Webhook sin x-signature — omitiendo verificación (modo test)');
-      return;
-    }
-
-    const parts = Object.fromEntries(
-      xSignature.split(',').map((p) => {
-        const i = p.indexOf('=');
-        return [p.slice(0, i).trim(), p.slice(i + 1).trim()];
-      }),
-    ) as { ts?: string; v1?: string };
-
-    if (!parts.ts || !parts.v1) {
-      throw new UnauthorizedException('Formato de x-signature inválido');
-    }
-
-    const manifest     = `id:${dataId};request-id:${xRequestId};ts:${parts.ts};`;
-    const hashEsperado = crypto.createHmac('sha256', this.secret).update(manifest).digest('hex');
-
-    let valida = false;
-    try {
-      const a = Buffer.from(parts.v1,     'hex');
-      const b = Buffer.from(hashEsperado, 'hex');
-      valida  = a.length === b.length && crypto.timingSafeEqual(a, b);
-    } catch {
-      valida = false;
-    }
-
-    if (!valida) {
-      this.logger.warn(`Firma rechazada | recibido=${parts.v1} | esperado=${hashEsperado}`);
-      throw new UnauthorizedException('Firma HMAC inválida');
-    }
   }
 }

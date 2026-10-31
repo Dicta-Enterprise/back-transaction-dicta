@@ -10,12 +10,16 @@ import { FacturaElectronicaPayload, FactusFacturaResponse, FactusTokenResponse }
 @Injectable()
 export class FactusService {
   private readonly logger = new Logger(FactusService.name);
-  private readonly baseUrl = 'https://api-sandbox.factus.com.co';
+  // Por defecto el sandbox de Factus; en producción se define FACTUS_BASE_URL.
+  private readonly baseUrl: string;
+  private static readonly TIMEOUT_MS = 20_000;
 
   private cachedToken: string | null = null;
   private tokenExpiresAt: number = 0;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly config: ConfigService) {
+    this.baseUrl = this.config.get<string>('FACTUS_BASE_URL', 'https://api-sandbox.factus.com.co').replace(/\/+$/, '');
+  }
 
 
   async obtenerToken(): Promise<string> {
@@ -44,6 +48,7 @@ export class FactusService {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body:    body.toString(),
+        signal:  AbortSignal.timeout(FactusService.TIMEOUT_MS),
       });
 
       if (!response.ok) {
@@ -67,20 +72,17 @@ export class FactusService {
 
 
   async emitirFactura(payload: FacturaElectronicaPayload): Promise<FactusFacturaResponse> {
-    const token = await this.obtenerToken();
-
     this.logger.log(`Emitiendo factura Factus | ref: ${payload.reference_code}`);
 
     try {
-      const response = await fetch(`${this.baseUrl}/v1/bills/validate`, {
-        method:  'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept':        'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      let response = await this.enviarFactura(payload, await this.obtenerToken());
+
+      // Si el token guardado ya no sirve (venció antes de lo esperado), se pide uno nuevo y se reintenta una vez.
+      if (response.status === 401) {
+        this.cachedToken = null;
+        this.tokenExpiresAt = 0;
+        response = await this.enviarFactura(payload, await this.obtenerToken());
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
@@ -102,5 +104,18 @@ export class FactusService {
       if (err instanceof BadGatewayException) throw err;
       throw new InternalServerErrorException('Error al emitir factura en Factus');
     }
+  }
+
+  private enviarFactura(payload: FacturaElectronicaPayload, token: string): Promise<Response> {
+    return fetch(`${this.baseUrl}/v1/bills/validate`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Accept':        'application/json',
+      },
+      body:   JSON.stringify(payload),
+      signal: AbortSignal.timeout(FactusService.TIMEOUT_MS),
+    });
   }
 }

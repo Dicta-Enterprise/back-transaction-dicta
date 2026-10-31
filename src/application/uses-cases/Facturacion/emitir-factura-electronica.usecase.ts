@@ -24,11 +24,11 @@ export class EmitirFacturaElectronicaUseCase {
   ) {}
 
   async ejecutar(input: EmitirFacturaInput): Promise<FactusFacturaResponse> {
-    const { orden, pago, cliente } = input;
+    const { orden, pago, cliente, documento_pagante } = input;
 
     this.logger.log(`Emitiendo factura para Orden #${orden.id} | Pago #${pago.id}`);
 
-    const payload = this.construirPayload(orden, pago, cliente);
+    const payload = this.construirPayload(orden, pago, cliente, documento_pagante);
     const respuesta = await this.factusService.emitirFactura(payload);
 
     this.logger.log(
@@ -64,8 +64,11 @@ export class EmitirFacturaElectronicaUseCase {
     const identDocumentId        = cliente?.identification_document_id ?? 3;
     const customerMunicipality   = cliente?.municipality_id ?? municipalityId;
 
+    // Código estable: la misma orden y pago siempre se facturan con la misma referencia (no cambia en cada intento).
+    const referencia = `ORD-${orden.id}-PAG-${pago.id}`;
+
     const items: FacturaItem[] = orden.detalleorden.map((d) => ({
-      code_reference:   `ORD-${orden.id}-PAG-${pago.id}-${Date.now()}`,
+      code_reference:   d.idcurso,
       name:             d.nombrecurso,
       quantity:         1,
       price:            Number(d.precio),
@@ -81,7 +84,7 @@ export class EmitirFacturaElectronicaUseCase {
     return {
       document:            '01',
       numbering_range_id:  numberingRangeId,
-      reference_code:      `ORD-${orden.id}-PAG-${pago.id}-${Date.now()}`,
+      reference_code:      referencia,
       observation:         `Pago online — Orden #${orden.id}`,
       payment_method_code: this.mapearMetodoPago(pago.metodopago),
       send_email:          1,           

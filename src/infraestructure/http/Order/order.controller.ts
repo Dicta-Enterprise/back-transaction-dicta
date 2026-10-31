@@ -83,6 +83,19 @@ export class OrdersController {
           mpStatus?: string;
           mpStatusDetail?: string;
         };
+        // "error" = la petición a Mercado Pago falló (credenciales, datos, permisos): no es un pago rechazado.
+        if (body.mpStatus === 'error') {
+          throw new HttpException(
+            {
+              statusCode: HttpStatus.BAD_GATEWAY,
+              message: 'No se pudo procesar el pago con Mercado Pago.',
+              mpStatus: 'error',
+              mpStatusDetail: body.mpStatusDetail ?? 'unknown_error',
+            },
+            HttpStatus.BAD_GATEWAY,
+          );
+        }
+
         const detailKey = body.mpStatusDetail ?? 'cc_rejected_other_reason';
 
         throw new HttpException(
