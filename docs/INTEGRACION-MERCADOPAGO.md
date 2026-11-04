@@ -146,7 +146,7 @@ La lista completa (correos con Brevo, Factus, etc.) está en `.env_template`.
    - Panel de desarrolladores → **Cuentas de prueba** → crear una cuenta de tipo vendedor.
    - Entra con esa cuenta en una **ventana de incógnito** (así no se mezcla con tu cuenta real), crea una **aplicación** con producto **Checkout API** y la **API Orders**.
    - En **Credenciales de producción** de esa cuenta falsa copia la **Public Key** y el **Access Token** (empiezan con `APP_USR-`). Son para desarrollo; el dinero es falso.
-3. Completa tu `.env` con esas credenciales y con las direcciones de los otros servicios.
+3. Completa tu `.env` con esas credenciales y con las direcciones de los otros servicios. **No uses credenciales `TEST-`:** la API de Orders las rechaza (ver la sección 11). Si trabajas también en el frontend, usa en él la **Public Key del mismo vendedor de prueba**.
 4. Enciende **back-auth** y **back-nest** (hacen falta para el usuario y el precio) y luego `npm run start:dev`. Swagger queda en `http://localhost:3001/api/swagger`.
 5. Modo **demostración** (`npm run start:demo`): solo expone lo interno de compras, en lectura, sin correos ni procesos programados.
 6. En **Windows**, si PowerShell bloquea `npx` con un error de "ejecución de scripts deshabilitada", usa `npx.cmd`.
@@ -241,7 +241,8 @@ El endpoint devuelve al frontend `mpStatusDetail`. Con Orders los códigos **no 
 
 ## 11. Trampas y cosas no obvias
 
-- **Credenciales `TEST-`:** el 21/10/2026 las de la aplicación de Dicta dieron **401** con `POST /v1/orders`; por eso se usan las `APP_USR-` de un vendedor de prueba. Conviene volver a verificarlo.
+- **Las credenciales `TEST-` NO sirven con la API de Orders.** Mercado Pago responde 401 `invalid_credentials` con este mensaje: *"Test credentials are not supported, use test users with production credentials to sandbox environment and your production credentials to production environment"*. Se verificó el 21/10/2026 y el 03/11/2026 con las de la aplicación de Dicta. Sí funcionan para otras llamadas (por ejemplo, crear el token de la tarjeta). **Para el sandbox se usa un usuario de prueba con sus credenciales `APP_USR-`; para producción, las de producción de la cuenta real.** Si algo falla con un 401 en pruebas, lo primero es revisar que no se esté usando una credencial `TEST-`.
+- **Frontend y backend deben usar credenciales del mismo vendedor:** el token de la tarjeta depende de la Public Key con la que se genera. Si el frontend usa la Public Key de una aplicación y el backend el Access Token de otra, el cobro falla aunque cada pieza esté bien.
 - **Base compartida con esquemas:** las compras viven en el esquema `transaction`. El SQL manual debe calificarse: `"transaction"."orden"`.
 - **Migraciones fuera del repo:** la base tiene migraciones aplicadas (`add_ip_orden` y un segundo `init`) que no están en `prisma/migrations`. Cuidado con `prisma migrate dev`.
 - **Columna `orden.ip`:** existe en la base pero está vacía y no se usa; se declaró en el esquema para que un `db push` no la borre.
@@ -279,7 +280,7 @@ El endpoint devuelve al frontend `mpStatusDetail`. Con Orders los códigos **no 
 1. Que se **unan** los PR #42 y #43 (y los demás de la sección 16).
 2. **Probar el webhook real** con un túnel público.
 3. **Traducir los códigos de error** si el frontend los usa (sección 9).
-4. **Verificar si las credenciales `TEST-` de la aplicación de Dicta funcionan con Orders.**
+4. **Alinear el frontend con el backend:** que el sitio use la Public Key (`APP_USR-`) del mismo vendedor de prueba que usa el servidor.
 5. Confirmar los **datos de impuestos** de la factura.
 6. **Revisar las órdenes pendientes antiguas** de la base compartida.
 7. Completar el **checklist de producción** (sección 13).
