@@ -6,7 +6,7 @@ No hace falta conocer nada previo: primero se explica qué es cada cosa, luego c
 - **Servicio:** `back-transaction`
 - **Autor del arreglo:** David Esteban Forero Palomino (proyecto de prácticas profesionales, Anexo 3)
 - **Última actualización:** 29/10/2026
-- **PR del cobro:** #42 (`feature/mercadopago-orders-api`). **PR de lo relacionado con el panel:** #43, #89, #90 y #77 (ver la sección 16).
+- **PR del cobro:** #42, **ya unido a `master` el 31/10/2026** (la rama `feature/mercadopago-orders-api` se borró al unirlo). **PR de lo relacionado con el panel:** #43, #89, #90 y #77 (ver la sección 16).
 - Hay una versión con capturas de pantalla en el Drive del equipo.
 
 ---
@@ -277,7 +277,7 @@ El endpoint devuelve al frontend `mpStatusDetail`. Con Orders los códigos **no 
 
 ## 14. Qué sigue (pendientes para quien continúe)
 
-1. Que se **unan** los PR #42 y #43 (y los demás de la sección 16).
+1. Que se **unan** los PR pendientes de la sección 16 (el #42, el del cobro, ya está en `master` desde el 31/10/2026). Ojo: unir a `master` no es lo mismo que **desplegar**; el despliegue con las credenciales de producción sigue pendiente (sección 13).
 2. **Probar el webhook real** con un túnel público.
 3. **Traducir los códigos de error** si el frontend los usa (sección 9).
 4. **Alinear el frontend con el backend:** que el sitio use la Public Key (`APP_USR-`) del mismo vendedor de prueba que usa el servidor.
@@ -298,7 +298,7 @@ El endpoint devuelve al frontend `mpStatusDetail`. Con Orders los códigos **no 
 
 | PR | Repositorio | Rama | Qué trae |
 |---|---|---|---|
-| #42 | back-transaction | `feature/mercadopago-orders-api` | El arreglo del cobro (esta guía) |
+| #42 | back-transaction | `feature/mercadopago-orders-api` (borrada) | El arreglo del cobro (esta guía). **Unido a `master` el 31/10/2026** |
 | #43 | back-transaction | `feature/ubicacion-compra-back-transaction` | Ubicación de la compra, detalle de compras, demostración, `npm test` corregido |
 | #89 | back-auth | `feature/usuarios-admin-back-auth` | Familias, usuarios de administración, UUID y códigos legibles |
 | #90 | back-auth | `feature/geolocalizar-interno-back-auth` | Endpoint interno para ubicar una IP |
