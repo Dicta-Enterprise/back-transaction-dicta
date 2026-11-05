@@ -14,15 +14,18 @@ export interface UsuarioResponse {
 @Injectable()
 export class AuthApiService {
   private readonly baseUrl: string;
+  private readonly internalApiKey: string;
 
   constructor(private readonly config: ConfigService) {
     this.baseUrl = this.config.getOrThrow<string>('AUTH_API_URL');
+    this.internalApiKey = this.config.getOrThrow<string>('INTERNAL_API_KEY');
   }
 
   async obtenerUsuario(id: number): Promise<UsuarioResponse> {
     try {
       const response = await fetch(
         `${this.baseUrl}/api/internal/users/${id}`,
+        { headers: { 'x-internal-api-key': this.internalApiKey } },
       );
 
       if (response.status === 404) {

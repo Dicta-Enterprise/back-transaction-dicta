@@ -1,5 +1,22 @@
 # TRANSACTION DICTA
 
+Servicio que maneja las **compras de Mundo Dictariano**: órdenes, pagos con Mercado Pago (API de Orders), facturas electrónicas, avisos (webhook) y la revisión automática de compras pendientes.
+
+> **¿Llegaste nuevo?** Empieza por la guía de continuidad: [`docs/INTEGRACION-MERCADOPAGO.md`](docs/INTEGRACION-MERCADOPAGO.md).
+> Explica el flujo de compra, cómo configurarlo y probarlo, las decisiones tomadas, las trampas conocidas y qué falta por hacer.
+> Para **ver el cobro funcionando** sin tocar producción, usa la demostración: [`demo/README.md`](demo/README.md).
+
+## 0. Resumen rápido
+
+```bash
+npm install
+npx prisma generate
+cp .env_template .env   # y completa los valores (para Mercado Pago, usa credenciales de un vendedor de PRUEBA)
+npm run start:dev       # necesita back-auth y back-nest encendidos
+npm test                # 91 pruebas automáticas, sin internet ni base de datos
+npm run demo:visual     # demostración en http://localhost:3999 (sandbox)
+```
+
 ## 1. Prisma
 Para inicializar prisma por instalacion ejecutar `npx prisma init`
 
@@ -9,7 +26,7 @@ Para poder generar el cliente con esos cambios ejecutar `npx prisma generate`
 
 ## 2. Iniciar en modo local
 
-Clonar el archivo `.env.template` y completar sus variables de entorno
+Clonar el archivo `.env_template` como `.env` y completar sus variables de entorno
 
 Ejecutar `npm run start:dev` para iniciar en modo dev
 

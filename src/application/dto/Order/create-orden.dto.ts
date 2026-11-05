@@ -5,7 +5,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { DetalleOrdenDto } from './detalleorden.dto';
-import { PagoDto } from './pago.dto';
+import { PagoDto } from './Pago.dto';
  
 export const EstadoOrden = {
   PENDIENTE:  'PENDIENTE',

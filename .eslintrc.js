@@ -15,7 +15,8 @@ module.exports = {
     node: true,
     jest: true,
   },
-  ignorePatterns: ['.eslintrc.js'],
+  // demo/ son scripts de demostración que imprimen en consola; no son código del servidor.
+  ignorePatterns: ['.eslintrc.js', 'demo/**'],
   rules: {
     '@typescript-eslint/interface-name-prefix': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',

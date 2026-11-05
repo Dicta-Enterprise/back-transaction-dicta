@@ -60,3 +60,6 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 /generated/prisma
+
+# Credenciales del vendedor de PRUEBA de Mercado Pago para las demostraciones
+demo/.env.sandbox
